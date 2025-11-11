@@ -11,7 +11,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, Clock, Mail, User, Globe, FileText, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import ScriptSelector from '@/components/ScriptSelector';
+import DuplicateCaseModal from '@/components/DuplicateCaseModal';
 import { getApplicableScripts, ResponseScript } from '@/data/responseScripts';
+import { Requirement } from '@/types/requirement';
 import { 
   AsesorName, 
   Pais, 
@@ -25,7 +27,12 @@ import {
 
 const RequirementFormNew = () => {
   const navigate = useNavigate();
-  const { addRequirement, requirements } = useRequirements();
+  const { addRequirement, requirements, findDuplicateCases } = useRequirements();
+
+  // Estados para casos duplicados
+  const [duplicateCases, setDuplicateCases] = useState<Requirement[]>([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [pendingSubmission, setPendingSubmission] = useState(false);
 
   // Generar número único del ticket
   const generateTicketNumber = () => {
@@ -88,6 +95,9 @@ const RequirementFormNew = () => {
     'Distribución', 'Devoluciones', 'Check-In', 'Alternativas', 'BSP'
   ];
 
+  // Motivos específicos para cuando el origen es "NO CORRESPONDE"
+  const motivosNoCorresponde = ['GRUPOS', 'AGENCIAS API', 'CLIENTES SITIO WEB'];
+
   // Áreas específicas para escalamiento
   const areasEscalamiento: AreaEscalamiento[] = [
     'Cobros Ato', 'Sobreventa', 'Medios de pago', 'Facturación', 'Finanzas',
@@ -97,6 +107,11 @@ const RequirementFormNew = () => {
   // Función para obtener sub motivos según el motivo seleccionado
   const getSubMotivos = () => {
     if (!motivo) return [];
+
+    // Si el origen es "NO CORRESPONDE", los motivos no tienen sub-motivos
+    if (origenConsulta === 'NO CORRESPONDE') {
+      return [];
+    }
 
     switch (motivo) {
       case 'Cambio de Status':
@@ -160,22 +175,40 @@ const RequirementFormNew = () => {
     }
   };
 
-  // Resetear sub motivo cuando cambia el motivo
+  // Resetear motivo y sub motivo cuando cambia el origen o tipo de solicitud
   useEffect(() => {
+    setMotivo('');
     setSubMotivo('');
     setSubMotivoOtros('');
-  }, [motivo, tipoSolicitud, origenConsulta]);
+  }, [origenConsulta, tipoSolicitud]);
 
-  // Actualizar scripts disponibles
-  useEffect(() => {
-    let scripts: ResponseScript[] = [];
-    
-    if (tipoSolicitud && motivo) {
-      scripts = [...scripts, ...getApplicableScripts('tipoSolicitud', `${tipoSolicitud} - ${motivo}`)];
+  // Función para verificar casos duplicados
+  const checkForDuplicates = (pnrValue: string) => {
+    if (pnrValue && pnrValue.trim() !== '') {
+      const duplicates = findDuplicateCases(pnrValue);
+      setDuplicateCases(duplicates);
+    } else {
+      setDuplicateCases([]);
     }
-    
-    setAvailableScripts(scripts);
-  }, [tipoSolicitud, motivo]);
+  };
+
+  // Verificar duplicados cuando cambie el PNR
+  useEffect(() => {
+    checkForDuplicates(pnrTktLocalizador);
+  }, [pnrTktLocalizador]);
+
+  // Función para continuar con la creación del caso
+  const continueWithCreation = () => {
+    setShowDuplicateModal(false);
+    setPendingSubmission(true);
+    // Ejecutar el submit después de cerrar el modal
+    setTimeout(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        form.requestSubmit();
+      }
+    }, 100);
+  };
 
   const handleApplyScript = (scriptContent: string) => {
     setInformacionBrindada(scriptContent);
@@ -184,6 +217,15 @@ const RequirementFormNew = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Si hay casos duplicados y no es una submissión pendiente, mostrar el modal
+    if (duplicateCases.length > 0 && !pendingSubmission) {
+      setShowDuplicateModal(true);
+      return;
+    }
+
+    // Resetear el flag de submissión pendiente
+    setPendingSubmission(false);
 
     // Validaciones básicas
     if (!nombreAsesor || !horaIngresoCorreo || !correoElectronico || !asuntoCorreoElectronico) {
@@ -201,7 +243,13 @@ const RequirementFormNew = () => {
       return;
     }
 
-    if (!tipoSolicitud || !motivo || !subMotivo) {
+    if (!tipoSolicitud || !motivo) {
+      toast.error('Por favor complete todos los campos de la Sección 4');
+      return;
+    }
+
+    // El sub-motivo solo es requerido si el origen NO es "NO CORRESPONDE"
+    if (origenConsulta !== 'NO CORRESPONDE' && !subMotivo) {
       toast.error('Por favor complete todos los campos de la Sección 4');
       return;
     }
@@ -463,13 +511,27 @@ const RequirementFormNew = () => {
           <CardContent className="pt-0 space-y-3">
             <div className="space-y-2">
               <Label htmlFor="pnrTktLocalizador">PNR/TKT/Localizador *</Label>
-              <Input
-                id="pnrTktLocalizador"
-                value={pnrTktLocalizador}
-                onChange={(e) => setPnrTktLocalizador(e.target.value)}
-                placeholder="ABC123 o 1234567890"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="pnrTktLocalizador"
+                  value={pnrTktLocalizador}
+                  onChange={(e) => setPnrTktLocalizador(e.target.value)}
+                  placeholder="ABC123 o 1234567890"
+                  className={duplicateCases.length > 0 ? "border-orange-500 focus:border-orange-500" : ""}
+                  required
+                />
+                {duplicateCases.length > 0 && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <AlertCircle className="h-4 w-4 text-orange-500" />
+                  </div>
+                )}
+              </div>
+              {duplicateCases.length > 0 && (
+                <p className="text-sm text-orange-600 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Se encontraron {duplicateCases.length} caso(s) existente(s) con este PNR/TKT/Localizador
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -504,25 +566,45 @@ const RequirementFormNew = () => {
                     <SelectValue placeholder="Seleccione motivo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tipoSolicitud === 'Solicitudes' && motivosSolicitud.map((motivoOption) => (
-                      <SelectItem key={motivoOption} value={motivoOption}>
-                        {motivoOption}
-                      </SelectItem>
-                    ))}
-                    {tipoSolicitud === 'Reclamos' && motivosReclamo.map((motivoOption) => (
-                      <SelectItem key={motivoOption} value={motivoOption}>
-                        {motivoOption}
-                      </SelectItem>
-                    ))}
+                    {origenConsulta === 'NO CORRESPONDE' ? (
+                      motivosNoCorresponde.map((motivoOption) => (
+                        <SelectItem key={motivoOption} value={motivoOption}>
+                          {motivoOption}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <>
+                        {tipoSolicitud === 'Solicitudes' && motivosSolicitud.map((motivoOption) => (
+                          <SelectItem key={motivoOption} value={motivoOption}>
+                            {motivoOption}
+                          </SelectItem>
+                        ))}
+                        {tipoSolicitud === 'Reclamos' && motivosReclamo.map((motivoOption) => (
+                          <SelectItem key={motivoOption} value={motivoOption}>
+                            {motivoOption}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="subMotivo">Sub Motivo *</Label>
-                <Select value={subMotivo} onValueChange={setSubMotivo}>
+                <Label htmlFor="subMotivo">
+                  Sub Motivo {origenConsulta !== 'NO CORRESPONDE' ? '*' : ''}
+                </Label>
+                <Select 
+                  value={subMotivo} 
+                  onValueChange={setSubMotivo}
+                  disabled={origenConsulta === 'NO CORRESPONDE'}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccione sub motivo" />
+                    <SelectValue placeholder={
+                      origenConsulta === 'NO CORRESPONDE' 
+                        ? "No aplica para este origen" 
+                        : "Seleccione sub motivo"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
                     {getSubMotivos().map((subMotivoOption) => (
@@ -707,6 +789,15 @@ const RequirementFormNew = () => {
           </Button>
         </div>
       </form>
+
+      {/* Modal de casos duplicados */}
+      <DuplicateCaseModal
+        isOpen={showDuplicateModal}
+        onClose={() => setShowDuplicateModal(false)}
+        duplicateCases={duplicateCases}
+        pnrTktLocalizador={pnrTktLocalizador}
+        onContinue={continueWithCreation}
+      />
     </div>
   );
 };

@@ -8,6 +8,7 @@ interface RequirementContextType {
   deleteRequirement: (id: string) => void;
   getRequirement: (id: string) => Requirement | undefined;
   addRequirementHistory: (id: string, action: string, comment?: string) => void;
+  findDuplicateCases: (pnrTktLocalizador: string) => Requirement[];
 }
 
 const RequirementContext = createContext<RequirementContextType | undefined>(undefined);
@@ -341,6 +342,21 @@ export const RequirementProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const findDuplicateCases = (pnrTktLocalizador: string): Requirement[] => {
+    if (!pnrTktLocalizador || pnrTktLocalizador.trim() === '') {
+      return [];
+    }
+    
+    // Buscar casos con el mismo PNR/TKT/Localizador (case insensitive)
+    const duplicates = requirements.filter(requirement => 
+      requirement.pnrTktLocalizador && 
+      requirement.pnrTktLocalizador.toLowerCase().trim() === pnrTktLocalizador.toLowerCase().trim()
+    );
+    
+    // Ordenar por fecha de creación (más recientes primero)
+    return duplicates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+
   return (
     <RequirementContext.Provider value={{
       requirements,
@@ -349,6 +365,7 @@ export const RequirementProvider = ({ children }: { children: ReactNode }) => {
       deleteRequirement,
       getRequirement,
       addRequirementHistory,
+      findDuplicateCases,
     }}>
       {children}
     </RequirementContext.Provider>

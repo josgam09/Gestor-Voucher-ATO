@@ -63,3 +63,4 @@ export const formatearFecha = (fecha: Date): string => {
     minute: '2-digit'
   });
 };
+

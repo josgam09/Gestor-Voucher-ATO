@@ -78,11 +78,11 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Sidebar Desktop */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
-          <div className="flex h-16 shrink-0 items-center gap-2">
-            <div className="p-2 bg-white rounded-lg shadow-sm">
-              <Server className="h-8 w-8" style={{ color: 'hsl(var(--sidebar-logo))' }} />
+          <div className="flex h-16 shrink-0 items-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center">
+              <Server className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">Manager GDS</h1>
+            <h1 className="text-lg font-semibold text-white whitespace-nowrap">Manager GDS</h1>
           </div>
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -156,9 +156,11 @@ const Layout = ({ children }: LayoutProps) => {
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
               <div className="flex h-full flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
-                <div className="flex h-16 shrink-0 items-center gap-2">
-                  <Server className="h-8 w-8 text-primary" />
-                  <h1 className="text-2xl font-bold text-sidebar-foreground">Manager GDS</h1>
+                <div className="flex h-16 shrink-0 items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center">
+                    <Server className="h-8 w-8 text-white" />
+                  </div>
+                  <h1 className="text-lg font-semibold text-white whitespace-nowrap">Manager GDS</h1>
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -225,11 +227,11 @@ const Layout = ({ children }: LayoutProps) => {
               </div>
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-white rounded-md shadow-sm">
-              <Server className="h-6 w-6" style={{ color: 'hsl(var(--sidebar-logo))' }} />
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
+              <Server className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-white">Manager GDS</h1>
+            <h1 className="text-base font-semibold text-white whitespace-nowrap">Manager GDS</h1>
           </div>
         </div>
       </div>

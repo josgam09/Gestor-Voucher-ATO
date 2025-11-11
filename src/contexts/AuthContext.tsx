@@ -5,7 +5,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => boolean;
   logout: () => void;
-  hasRole: (role: UserRole) => boolean;
+  hasRole: (roles: UserRole | UserRole[]) => boolean;
   isLoading: boolean;
 }
 
@@ -84,8 +84,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('gds_user');
   };
 
-  const hasRole = (role: UserRole): boolean => {
-    return user?.role === role;
+  const hasRole = (roles: UserRole | UserRole[]): boolean => {
+    if (!user) return false;
+    const rolesArray = Array.isArray(roles) ? roles : [roles];
+    return rolesArray.includes(user.role);
   };
 
   const value: AuthContextType = {
