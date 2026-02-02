@@ -244,9 +244,9 @@ export interface Requirement {
   id: string;
   ticketNumber: string; // Número de ticket/caso autogenerado
   
-  // Sección 1: Información del Asesor
-  nombreAsesor: AsesorName;
-  horaIngresoCorreo: string; // Formato HH:MM
+  // Sección 1: Información Personal de Aeropuerto
+  nombreAsesor: string; // Nombre y Apellido del Solicitante (texto libre)
+  horaIngresoCorreo: string; // HH:MM (autogenerado al crear el requerimiento)
   correoElectronico: string;
   asuntoCorreoElectronico: string;
   

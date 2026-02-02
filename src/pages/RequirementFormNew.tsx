@@ -15,7 +15,6 @@ import DuplicateCaseModal from '@/components/DuplicateCaseModal';
 import { getApplicableScripts, ResponseScript } from '@/data/responseScripts';
 import { Requirement } from '@/types/requirement';
 import { 
-  AsesorName, 
   Pais, 
   OrigenConsulta, 
   TipoSolicitud,
@@ -43,10 +42,10 @@ const RequirementFormNew = () => {
 
   const ticketNumber = generateTicketNumber();
 
-  // Sección 1: Información del Asesor
-  const [nombreAsesor, setNombreAsesor] = useState<AsesorName | ''>('');
-  const [horaIngresoCorreo, setHoraIngresoCorreo] = useState('');
-  const [correoElectronico, setCorreoElectronico] = useState('');
+  // Sección 1: Información Personal de Aeropuerto
+  const [nombreSolicitante, setNombreSolicitante] = useState('');
+  const [fechaHoraIngresoSolicitud] = useState<Date>(() => new Date());
+  const [correoSolicitante, setCorreoSolicitante] = useState('');
   const [asuntoCorreoElectronico, setAsuntoCorreoElectronico] = useState('');
 
   // Sección 2: Origen de Consulta
@@ -74,13 +73,6 @@ const RequirementFormNew = () => {
   const [availableScripts, setAvailableScripts] = useState<ResponseScript[]>([]);
 
   // Listas de opciones
-  const asesores: AsesorName[] = [
-    'Jenny Andrea Taborda', 'Jhoan Restrepo', 'José Ramos', 'Julieth Urbina',
-    'Luz Lozada', 'Manuela Maz', 'Mauricio Rios', 'Nazly Lugo',
-    'Rafael Carmona', 'Sandra Milena Jaramillo', 'Sofia Guarin',
-    'Valentina Mejía', 'Viviana Virlen'
-  ];
-
   const paises: Pais[] = ['AR', 'BR', 'CL', 'CO', 'EC', 'PE', 'PY', 'RD', 'UY', 'US'];
 
   const origenes: OrigenConsulta[] = ['AMADEUS', 'SABRE', 'NO CORRESPONDE'];
@@ -228,10 +220,20 @@ const RequirementFormNew = () => {
     setPendingSubmission(false);
 
     // Validaciones básicas
-    if (!nombreAsesor || !horaIngresoCorreo || !correoElectronico || !asuntoCorreoElectronico) {
+    if (!nombreSolicitante || !correoSolicitante || !asuntoCorreoElectronico) {
       toast.error('Por favor complete todos los campos de la Sección 1');
       return;
     }
+
+    const email = correoSolicitante.trim();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!isValidEmail) {
+      toast.error('Ingrese un correo electrónico del solicitante válido');
+      return;
+    }
+
+    const now = new Date();
+    const horaIngresoSolicitud = now.toTimeString().slice(0, 5); // HH:MM
 
     if (!pais || !origenConsulta) {
       toast.error('Por favor complete todos los campos de la Sección 2');
@@ -300,9 +302,9 @@ const RequirementFormNew = () => {
 
     const newRequirement = {
       ticketNumber, // Usar el número generado
-      nombreAsesor: nombreAsesor as AsesorName,
-      horaIngresoCorreo,
-      correoElectronico,
+      nombreAsesor: nombreSolicitante.trim(),
+      horaIngresoCorreo: horaIngresoSolicitud,
+      correoElectronico: email,
       asuntoCorreoElectronico,
       pais: pais as Pais,
       origenConsulta: origenConsulta as OrigenConsulta,
@@ -321,7 +323,7 @@ const RequirementFormNew = () => {
       observaciones,
       status: estadoInicial,
       priority: 'media' as const,
-      initialDate: new Date(),
+      initialDate: now,
       resolvedAt: casoOpcion === 'SI_CERRAR_CASO' ? new Date() : undefined,
     };
 
@@ -370,57 +372,60 @@ const RequirementFormNew = () => {
           </CardContent>
         </Card>
 
-        {/* Sección 1: Información del Asesor */}
+        {/* Sección 1: Información Personal de Aeropuerto */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <User className="h-4 w-4" />
-              Sección 1: Información del Asesor
+              Sección 1: Información Personal de Aeropuerto
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-3">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="nombreAsesor">Asesor *</Label>
-                <Select value={nombreAsesor} onValueChange={(value) => setNombreAsesor(value as AsesorName)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione un asesor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {asesores.map((asesor) => (
-                      <SelectItem key={asesor} value={asesor}>
-                        {asesor}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="horaIngresoCorreo">Hora de Ingreso del Correo *</Label>
+                <Label htmlFor="nombreSolicitante">Nombre y Apellido del Solicitante *</Label>
                 <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="horaIngresoCorreo"
-                    type="time"
-                    value={horaIngresoCorreo}
-                    onChange={(e) => setHoraIngresoCorreo(e.target.value)}
+                    id="nombreSolicitante"
+                    value={nombreSolicitante}
+                    onChange={(e) => setNombreSolicitante(e.target.value)}
                     className="pl-10"
+                    placeholder="Ingrese nombre y apellido"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="correoElectronico">Correo Electrónico *</Label>
+                <Label htmlFor="fechaHoraIngresoSolicitud">Fecha y Hora de Ingreso Solicitud</Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="fechaHoraIngresoSolicitud"
+                    value={fechaHoraIngresoSolicitud.toLocaleString('es-AR', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                    className="pl-10"
+                    disabled
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="correoSolicitante">Correo Electrónico del Solicitante *</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="correoElectronico"
                     type="email"
-                    value={correoElectronico}
-                    onChange={(e) => setCorreoElectronico(e.target.value)}
-                    placeholder="cliente@ejemplo.com"
+                    id="correoSolicitante"
+                    value={correoSolicitante}
+                    onChange={(e) => setCorreoSolicitante(e.target.value)}
+                    placeholder="nombre@dominio.com"
                     className="pl-10"
                     required
                   />
