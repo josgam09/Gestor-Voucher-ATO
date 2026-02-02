@@ -19,7 +19,7 @@ if (!DATABASE_URL) {
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "manager-gds-server" });
+  res.json({ ok: true, service: "gestor-voucher-ato-server" });
 });
 
 app.get("/health/db", async (_req, res) => {

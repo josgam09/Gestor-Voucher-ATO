@@ -47,7 +47,7 @@ const AdminPanel = () => {
           <h1 className="text-3xl font-bold tracking-tight">Panel de Administración</h1>
         </div>
         <p className="text-muted-foreground">
-          Configura y personaliza el sistema Manager-GDS
+          Configura y personaliza el sistema Gestor Voucher ATO
         </p>
       </div>
 
