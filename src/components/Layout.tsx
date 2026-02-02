@@ -82,7 +82,7 @@ const Layout = ({ children }: LayoutProps) => {
             <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center">
               <Server className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-lg font-semibold text-white whitespace-nowrap">Manager GDS</h1>
+            <h1 className="text-lg font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
           </div>
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -160,7 +160,7 @@ const Layout = ({ children }: LayoutProps) => {
                   <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center">
                     <Server className="h-8 w-8 text-white" />
                   </div>
-                  <h1 className="text-lg font-semibold text-white whitespace-nowrap">Manager GDS</h1>
+                  <h1 className="text-lg font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -231,7 +231,7 @@ const Layout = ({ children }: LayoutProps) => {
             <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
               <Server className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-base font-semibold text-white whitespace-nowrap">Manager GDS</h1>
+            <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
           </div>
         </div>
       </div>

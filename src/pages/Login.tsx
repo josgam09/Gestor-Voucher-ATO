@@ -21,7 +21,7 @@ const Login = () => {
     const success = login(email, password);
     
     if (success) {
-      toast.success('¡Bienvenido a Manager-GDS!');
+      toast.success('¡Bienvenido a Gestor Voucher ATO!');
       navigate('/');
     } else {
       toast.error('Credenciales incorrectas. Verifica tu email y contraseña.');
@@ -36,7 +36,7 @@ const Login = () => {
     setTimeout(() => {
       const success = login(demoEmail, 'password123');
       if (success) {
-        toast.success('¡Bienvenido a Manager-GDS!');
+        toast.success('¡Bienvenido a Gestor Voucher ATO!');
         navigate('/');
       }
     }, 300);
@@ -50,7 +50,7 @@ const Login = () => {
           <div className="flex items-center gap-3">
             <Server className="h-12 w-12 text-primary" />
             <div>
-              <h1 className="text-4xl font-bold">Manager GDS</h1>
+              <h1 className="text-4xl font-bold">Gestor Voucher ATO</h1>
               <p className="text-muted-foreground">Sistema de Gestión de Requerimientos</p>
             </div>
           </div>

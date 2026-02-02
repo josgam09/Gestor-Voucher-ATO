@@ -1,13 +1,13 @@
 {
-  "name": "manager-gds",
+  "name": "gestor-voucher-ato",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Sistema de gestión de requerimientos GDS (Global Distribution System)",
+  "description": "Gestor Voucher ATO",
   "author": "Jose Gamez",
   "repository": {
     "type": "git",
-    "url": "https://github.com/josgam09/Manager-GDS.git"
+    "url": "https://github.com/josgam09/Gestor-Voucher-ATO.git"
   },
   "scripts": {
     "dev": "vite",

@@ -1,8 +1,8 @@
-# Manager GDS
+# Gestor Voucher ATO
 
-## Sistema de Gestión de Requerimientos GDS
+## Sistema de Gestión Voucher ATO
 
-Manager GDS es una aplicación web moderna diseñada para la gestión centralizada de requerimientos relacionados con sistemas GDS (Global Distribution System) como Sabre, Amadeus, Travelport y Sirena.
+Gestor Voucher ATO es una aplicación web moderna diseñada para la gestión centralizada de vouchers ATO.
 
 ## 🚀 Características Principales
 
@@ -40,10 +40,10 @@ Este proyecto está construido con:
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/josgam09/Manager-GDS.git
+git clone https://github.com/josgam09/Gestor-Voucher-ATO.git
 
 # Navegar al directorio del proyecto
-cd Manager-GDS
+cd Gestor-Voucher-ATO
 
 # Instalar dependencias
 npm install
@@ -118,7 +118,7 @@ El dashboard principal muestra:
 ## 📊 Estructura del Proyecto
 
 ```
-Manager-GDS/
+Gestor-Voucher-ATO/
 ├── src/
 │   ├── components/       # Componentes reutilizables
 │   │   ├── ui/          # Componentes de shadcn/ui
@@ -198,4 +198,4 @@ Este proyecto es privado y está destinado al uso interno de la organización.
 
 ---
 
-**Manager GDS** - Gestión Eficiente de Requerimientos GDS
+**Gestor Voucher ATO** - Gestión eficiente de Voucher ATO
