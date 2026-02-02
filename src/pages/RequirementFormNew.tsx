@@ -38,7 +38,7 @@ const RequirementFormNew = () => {
   const generateTicketNumber = () => {
     const year = new Date().getFullYear();
     const nextNumber = requirements.length + 1;
-    return `GDS-${year}-${String(nextNumber).padStart(3, '0')}`;
+    return `VO_ATO-${year}-${String(nextNumber).padStart(3, '0')}`;
   };
 
   const ticketNumber = generateTicketNumber();

@@ -81,7 +81,7 @@ Saludos cordiales,
 Su solicitud de waiver ha sido escalada al equipo GDS SABRE para aprobación.
 
 📝 INFORMACIÓN DEL ESCALAMIENTO:
-• Ticket de escalamiento: GDS-[NÚMERO]
+• Ticket de escalamiento: VO_ATO-[NÚMERO]
 • Motivo del waiver: [MOTIVO]
 • PNR: [PNR]
 • Vuelo: [VUELO]

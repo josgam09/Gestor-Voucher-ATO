@@ -13,11 +13,11 @@ interface RequirementContextType {
 
 const RequirementContext = createContext<RequirementContextType | undefined>(undefined);
 
-// Mock data inicial de requerimientos GDS
+// Mock data inicial de requerimientos (VO_ATO)
 const mockRequirements: Requirement[] = [
   {
     id: '1',
-    ticketNumber: 'GDS-2025-001',
+    ticketNumber: 'VO_ATO-2025-001',
     nombreAsesor: 'Sandra Milena Jaramillo',
     horaIngresoCorreo: '09:30',
     correoElectronico: 'cliente@example.com',
@@ -62,7 +62,7 @@ const mockRequirements: Requirement[] = [
   },
   {
     id: '2',
-    ticketNumber: 'GDS-2025-002',
+    ticketNumber: 'VO_ATO-2025-002',
     nombreAsesor: 'Sofia Guarin',
     horaIngresoCorreo: '14:15',
     correoElectronico: 'support@example.com',
@@ -99,7 +99,7 @@ const mockRequirements: Requirement[] = [
   },
   {
     id: '3',
-    ticketNumber: 'GDS-2025-003',
+    ticketNumber: 'VO_ATO-2025-003',
     nombreAsesor: 'José Ramos',
     horaIngresoCorreo: '11:00',
     correoElectronico: 'agencia@travel.com',
@@ -151,7 +151,7 @@ const mockRequirements: Requirement[] = [
   },
   {
     id: '4',
-    ticketNumber: 'GDS-2025-004',
+    ticketNumber: 'VO_ATO-2025-004',
     nombreAsesor: 'María González',
     horaIngresoCorreo: '16:45',
     correoElectronico: 'cliente@example.com',
@@ -189,7 +189,7 @@ const mockRequirements: Requirement[] = [
   },
   {
     id: '5',
-    ticketNumber: 'GDS-2025-005',
+    ticketNumber: 'VO_ATO-2025-005',
     nombreAsesor: 'Carlos Mendoza',
     horaIngresoCorreo: '08:20',
     correoElectronico: 'agencia@travel.com',
@@ -232,7 +232,7 @@ const mockRequirements: Requirement[] = [
   },
   {
     id: '6',
-    ticketNumber: 'GDS-2025-006',
+    ticketNumber: 'VO_ATO-2025-006',
     nombreAsesor: 'Laura Torres',
     horaIngresoCorreo: '13:30',
     correoElectronico: 'support@example.com',
