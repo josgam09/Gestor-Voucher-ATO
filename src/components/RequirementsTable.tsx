@@ -24,7 +24,6 @@ import {
   Clock,
   Calendar,
   User,
-  Mail,
   Building2,
   ExternalLink
 } from 'lucide-react';
@@ -44,7 +43,6 @@ type SortField =
   | 'pais'
   | 'initialDate'
   | 'horaIngresoCorreo'
-  | 'asuntoCorreoElectronico'
   | 'origenConsulta'
   | 'tipoSolicitud'
   | 'motivo'
@@ -121,7 +119,6 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
       const searchLower = searchTerm.toLowerCase();
       return (
         requirement.ticketNumber.toLowerCase().includes(searchLower) ||
-        requirement.asuntoCorreoElectronico.toLowerCase().includes(searchLower) ||
         requirement.pnrTktLocalizador.toLowerCase().includes(searchLower) ||
         requirement.nombreAsesor.toLowerCase().includes(searchLower) ||
         requirement.motivo.toLowerCase().includes(searchLower) ||
@@ -154,10 +151,6 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
         case 'horaIngresoCorreo':
           aValue = a.horaIngresoCorreo;
           bValue = b.horaIngresoCorreo;
-          break;
-        case 'asuntoCorreoElectronico':
-          aValue = a.asuntoCorreoElectronico;
-          bValue = b.asuntoCorreoElectronico;
           break;
         case 'origenConsulta':
           aValue = a.origenConsulta;
@@ -210,7 +203,6 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
           'Fecha Ingreso',
           'Hora Ingreso',
           'Tiempo Transcurrido',
-          'Asunto',
           'Origen',
           'Tipo Claims',
           'Motivo',
@@ -227,7 +219,6 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
           new Date(req.initialDate).toLocaleDateString('es-AR'),
           req.horaIngresoCorreo,
           calculateTimeElapsed(req.horaIngresoCorreo, req.initialDate),
-          req.asuntoCorreoElectronico,
           req.origenConsulta,
           req.tipoSolicitud,
           req.motivo,
@@ -275,7 +266,7 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por número, asunto, PNR, asesor..."
+              placeholder="Buscar por número, PNR, solicitante..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -343,16 +334,6 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
                   <Clock className="h-3 w-3" />
                   Hora Ingreso
                   {getSortIcon('horaIngresoCorreo')}
-                </div>
-              </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-xs"
-                onClick={() => handleSort('asuntoCorreoElectronico')}
-              >
-                <div className="flex items-center gap-1">
-                  <Mail className="h-3 w-3" />
-                  Asunto
-                  {getSortIcon('asuntoCorreoElectronico')}
                 </div>
               </TableHead>
               <TableHead 
@@ -462,11 +443,6 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
                         : calculateTimeElapsed(requirement.horaIngresoCorreo, requirement.initialDate)
                       }
                     </span>
-                  </div>
-                </TableCell>
-                <TableCell className="max-w-xs text-xs">
-                  <div className="truncate" title={requirement.asuntoCorreoElectronico}>
-                    {requirement.asuntoCorreoElectronico}
                   </div>
                 </TableCell>
                 <TableCell>

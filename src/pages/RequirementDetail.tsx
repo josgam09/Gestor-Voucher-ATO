@@ -379,16 +379,6 @@ const RequirementDetail = () => {
                 </>
               )}
 
-              {requirement.asuntoCorreoElectronico && (
-                <>
-                  <Separator />
-                  <div>
-                    <h3 className="font-semibold mb-2">Asunto del Correo</h3>
-                    <p className="text-muted-foreground">{requirement.asuntoCorreoElectronico}</p>
-                  </div>
-                </>
-              )}
-
               <Separator />
               <div>
                 <h3 className="font-semibold mb-2">Solicitud del Cliente</h3>

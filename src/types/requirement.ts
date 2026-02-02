@@ -248,7 +248,6 @@ export interface Requirement {
   nombreAsesor: string; // Nombre y Apellido del Solicitante (texto libre)
   horaIngresoCorreo: string; // HH:MM (autogenerado al crear el requerimiento)
   correoElectronico: string;
-  asuntoCorreoElectronico: string;
   
   // Sección 2: Origen de Consulta
   pais: Pais;

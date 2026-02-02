@@ -46,7 +46,6 @@ const RequirementFormNew = () => {
   const [nombreSolicitante, setNombreSolicitante] = useState('');
   const [fechaHoraIngresoSolicitud] = useState<Date>(() => new Date());
   const [correoSolicitante, setCorreoSolicitante] = useState('');
-  const [asuntoCorreoElectronico, setAsuntoCorreoElectronico] = useState('');
 
   // Sección 2: Origen de Consulta
   const [pais, setPais] = useState<Pais | ''>('');
@@ -220,7 +219,7 @@ const RequirementFormNew = () => {
     setPendingSubmission(false);
 
     // Validaciones básicas
-    if (!nombreSolicitante || !correoSolicitante || !asuntoCorreoElectronico) {
+    if (!nombreSolicitante || !correoSolicitante) {
       toast.error('Por favor complete todos los campos de la Sección 1');
       return;
     }
@@ -305,7 +304,6 @@ const RequirementFormNew = () => {
       nombreAsesor: nombreSolicitante.trim(),
       horaIngresoCorreo: horaIngresoSolicitud,
       correoElectronico: email,
-      asuntoCorreoElectronico,
       pais: pais as Pais,
       origenConsulta: origenConsulta as OrigenConsulta,
       esSoporteIngles: esSoporteIngles === 'Si',
@@ -432,16 +430,6 @@ const RequirementFormNew = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="asuntoCorreoElectronico">Asunto del Correo Electrónico *</Label>
-                <Input
-                  id="asuntoCorreoElectronico"
-                  value={asuntoCorreoElectronico}
-                  onChange={(e) => setAsuntoCorreoElectronico(e.target.value)}
-                  placeholder="Asunto del correo"
-                  required
-                />
-              </div>
             </div>
           </CardContent>
         </Card>

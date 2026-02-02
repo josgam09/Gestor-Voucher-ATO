@@ -161,7 +161,6 @@ const RequirementsList = () => {
     const filtered = dateFilteredRequirements.filter((req) => {
       const matchesSearch =
         req.ticketNumber.toLowerCase().includes(search.toLowerCase()) ||
-        req.asuntoCorreoElectronico.toLowerCase().includes(search.toLowerCase()) ||
         (req.nombreAsesor?.toLowerCase() || '').includes(search.toLowerCase()) ||
         req.pnrTktLocalizador.toLowerCase().includes(search.toLowerCase()) ||
         (req.motivo?.toLowerCase() || '').includes(search.toLowerCase());
@@ -200,10 +199,6 @@ const RequirementsList = () => {
           aValue = a.status;
           bValue = b.status;
           break;
-        case 'asuntoCorreoElectronico':
-          aValue = a.asuntoCorreoElectronico;
-          bValue = b.asuntoCorreoElectronico;
-          break;
         case 'origenConsulta':
           aValue = a.origenConsulta;
           bValue = b.origenConsulta;
@@ -232,13 +227,12 @@ const RequirementsList = () => {
   }, [dateFilteredRequirements, search, countryFilter, assignedToFilter, statusFilter, priorityFilter, origenFilter, tipoSolicitudFilter, motivoFilter, sortColumn, sortDirection]);
 
   const exportToCSV = () => {
-    const headers = ['Ticket', 'País', 'Origen', 'Tipo', 'Asunto', 'PNR/TKT', 'Estado', 'Prioridad', 'Asignado a', 'Motivo', 'Fecha Creación'];
+    const headers = ['Ticket', 'País', 'Origen', 'Tipo', 'PNR/TKT', 'Estado', 'Prioridad', 'Asignado a', 'Motivo', 'Fecha Creación'];
     const rows = filteredRequirements.map(req => [
       req.ticketNumber,
       req.pais,
       req.origenConsulta,
       req.tipoSolicitud,
-      req.asuntoCorreoElectronico,
       req.pnrTktLocalizador,
       req.status,
       req.priority,
@@ -589,13 +583,6 @@ const RequirementsList = () => {
                       </Button>
                     </TableHead>
                     <TableHead className="py-2">
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent" onClick={() => handleSort('asuntoCorreoElectronico')}>
-                        Asunto
-                        {sortColumn === 'asuntoCorreoElectronico' && (sortDirection === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />)}
-                        {sortColumn !== 'asuntoCorreoElectronico' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="py-2">
                       <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent whitespace-normal text-left" onClick={() => handleSort('origenConsulta')}>
                         Origen
                         {sortColumn === 'origenConsulta' && (sortDirection === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />)}
@@ -639,9 +626,6 @@ const RequirementsList = () => {
                       </TableCell>
                       <TableCell className="py-2">
                         <RequirementStatusBadge status={req.status} />
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <span className="text-xs font-medium">{req.asuntoCorreoElectronico}</span>
                       </TableCell>
                       <TableCell className="py-2">
                         <span className="text-xs">{req.origenConsulta}</span>

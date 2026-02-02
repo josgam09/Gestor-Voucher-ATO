@@ -128,15 +128,7 @@ const DuplicateCaseModal = ({
                             <span className="font-medium">{requirement.subMotivo}</span>
                           </div>
                         )}
-                        {requirement.asuntoCorreoElectronico && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Asunto:</span>
-                            <span className="font-medium truncate">
-                              {requirement.asuntoCorreoElectronico}
-                            </span>
-                          </div>
-                        )}
+                        {/* Asunto del correo eliminado */}
                       </div>
                     </div>
                   </CardContent>
