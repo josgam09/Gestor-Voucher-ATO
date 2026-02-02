@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Server, Lock, Mail, Shield, Users, UserCheck } from 'lucide-react';
+import { Lock, Mail, Shield, Users, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { DEMO_USERS } from '@/types/user';
 
@@ -48,7 +48,7 @@ const Login = () => {
         {/* Panel Izquierdo - Información */}
         <div className="hidden md:block space-y-6">
           <div className="flex items-center gap-3">
-            <Server className="h-12 w-12 text-primary" />
+            <img src="/logo.svg" alt="Gestor Voucher ATO" className="h-12 w-auto" />
             <div>
               <h1 className="text-4xl font-bold">Gestor Voucher ATO</h1>
               <p className="text-muted-foreground">Sistema de Gestión de Requerimientos</p>

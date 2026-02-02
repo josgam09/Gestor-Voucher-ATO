@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" role="img" aria-label="Gestor Voucher ATO">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00AEC7"/>
+      <stop offset="0.55" stop-color="#00AEC7"/>
+      <stop offset="0.55" stop-color="#B2292E"/>
+      <stop offset="1" stop-color="#B2292E"/>
+    </linearGradient>
+  </defs>
+  <!-- Infinity mark inspired by limitless branding -->
+  <path
+    d="M140 80c-18 0-33 15-49 32-14 14-30 30-50 30C19 142 6 129 6 112c0-22 20-44 52-44 23 0 40 16 55 32 14 14 27 30 47 30s34-16 49-32c15-16 33-32 55-32 32 0 52 22 52 44 0 17-13 30-35 30-20 0-36-16-50-30-16-17-31-32-49-32zm-82-32c-18 0-29 10-29 20 0 9 7 16 18 16 11 0 20-9 32-22-8-8-14-14-21-14zm194 0c-7 0-13 6-21 14 12 13 21 22 32 22 11 0 18-7 18-16 0-10-11-20-29-20z"
+    fill="none"
+    stroke="url(#grad)"
+    stroke-width="18"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <text x="320" y="95" font-family="Lato, system-ui, sans-serif" font-size="54" font-weight="800" fill="#204071" letter-spacing="2">
+    GESTOR VOUCHER ATO
+  </text>
+</svg>
+

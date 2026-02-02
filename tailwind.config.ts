@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"Encode Sans"', 'system-ui', 'sans-serif'],
+        sans: ['Lato', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -74,6 +74,37 @@ export default {
           "3": "hsl(var(--chart-3))",
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
+        },
+        brand: {
+          outline: "#B2292E",
+          text: "#204071",
+          white: "#FFFFFF",
+          red: {
+            100: "#FEF0F0",
+            200: "#FDCAD7",
+            300: "#E77881",
+            400: "#CF4D54",
+            500: "#B2292E",
+            600: "#992027",
+            700: "#81191F",
+            800: "#6A1318",
+            900: "#510D11",
+          },
+          blue: {
+            500: "#1C355E",
+            600: "#204071",
+          },
+          turquoise: {
+            100: "#F0FFFF",
+            200: "#B4F8FF",
+            300: "#78E8FC",
+            400: "#3CCFE7",
+            500: "#00AEC7",
+            600: "#0098AE",
+            700: "#008194",
+            800: "#006A7A",
+            900: "#00515E",
+          },
         },
       },
       borderRadius: {

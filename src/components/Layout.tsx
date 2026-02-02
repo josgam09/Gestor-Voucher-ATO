@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LayoutDashboard, List, PlusCircle, Menu, Server, Settings, LogOut, Shield, Users as UsersIcon, UserCheck, Inbox } from 'lucide-react';
+import { LayoutDashboard, List, PlusCircle, Menu, Settings, LogOut, Shield, Users as UsersIcon, UserCheck, Inbox } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -79,8 +79,8 @@ const Layout = ({ children }: LayoutProps) => {
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center">
-              <Server className="h-8 w-8 text-white" />
+            <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+              <img src="/favicon.svg" alt="Gestor Voucher ATO" className="h-8 w-8" />
             </div>
             <h1 className="text-lg font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
           </div>
@@ -157,8 +157,8 @@ const Layout = ({ children }: LayoutProps) => {
             <SheetContent side="left" className="w-64 p-0">
               <div className="flex h-full flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
                 <div className="flex h-16 shrink-0 items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center">
-                    <Server className="h-8 w-8 text-white" />
+                  <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                    <img src="/favicon.svg" alt="Gestor Voucher ATO" className="h-8 w-8" />
                   </div>
                   <h1 className="text-lg font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
                 </div>
@@ -228,8 +228,8 @@ const Layout = ({ children }: LayoutProps) => {
             </SheetContent>
           </Sheet>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
-              <Server className="h-6 w-6 text-white" />
+            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+              <img src="/favicon.svg" alt="Gestor Voucher ATO" className="h-6 w-6" />
             </div>
             <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
           </div>

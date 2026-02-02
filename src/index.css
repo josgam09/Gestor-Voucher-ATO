@@ -8,24 +8,28 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Branding (desde limitless-template) */
+    --background: 240 10% 99%;
+    --foreground: 217 53% 18%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 217 53% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 217 53% 18%;
 
-    --primary: 188 100% 39%;
+    /* Primario JetSMART (#B2292E) */
+    --primary: 357 63% 43%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 222 47% 11%;
+    /* Secundario JetSMART (#1C355E) */
+    --secondary: 217 53% 24%;
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
 
+    /* Acento JetSMART (#00AEC7) */
     --accent: 188 100% 39%;
     --accent-foreground: 0 0% 100%;
 
@@ -40,25 +44,27 @@ All colors MUST be HSL.
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 188 100% 39%;
+    --ring: 357 63% 43%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 188 100% 39%;
+    /* Sidebar alineado al secundario */
+    --sidebar-background: 217 53% 24%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 188 100% 39%;
+    --sidebar-primary: 357 63% 43%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 188 100% 45%;
+    --sidebar-accent: 217 53% 30%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 188 100% 45%;
-    --sidebar-ring: 188 100% 39%;
-    --sidebar-logo: 217 100% 45%;
+    --sidebar-border: 217 53% 30%;
+    --sidebar-ring: 357 63% 43%;
+    --sidebar-logo: 0 0% 100%;
 
-    --chart-1: 188 100% 39%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 280 80% 55%;
+    /* Charts con paleta corporativa */
+    --chart-1: 357 63% 43%;
+    --chart-2: 188 100% 39%;
+    --chart-3: 217 53% 24%;
+    --chart-4: 142 71% 45%;
+    --chart-5: 38 92% 50%;
   }
 
   .dark {
@@ -94,23 +100,23 @@ All colors MUST be HSL.
 
     --border: 215 28% 17%;
     --input: 215 28% 17%;
-    --ring: 188 100% 39%;
+    --ring: 357 63% 43%;
     
-    --sidebar-background: 188 100% 39%;
+    --sidebar-background: 217 53% 24%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 188 100% 39%;
+    --sidebar-primary: 357 63% 43%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 188 100% 45%;
+    --sidebar-accent: 217 53% 30%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 188 100% 45%;
-    --sidebar-ring: 188 100% 39%;
-    --sidebar-logo: 217 100% 45%;
+    --sidebar-border: 217 53% 30%;
+    --sidebar-ring: 357 63% 43%;
+    --sidebar-logo: 0 0% 100%;
 
-    --chart-1: 188 100% 39%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 280 80% 55%;
+    --chart-1: 357 63% 43%;
+    --chart-2: 188 100% 39%;
+    --chart-3: 217 53% 24%;
+    --chart-4: 142 71% 45%;
+    --chart-5: 38 92% 50%;
   }
 }
 
@@ -121,7 +127,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Encode Sans', system-ui, sans-serif;
+    font-family: 'Lato', system-ui, sans-serif;
     font-weight: 400; /* Regular para texto general */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
