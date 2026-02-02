@@ -78,11 +78,16 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Sidebar Desktop */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
-          <div className="flex h-16 shrink-0 items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-              <img src="/favicon.svg" alt="Gestor Voucher ATO" className="h-8 w-8" />
+          <div className="flex shrink-0 flex-col gap-2 pt-4">
+            <img
+              src="/logo.svg"
+              alt="Gestor Voucher ATO"
+              className="w-full max-w-[200px] h-auto"
+            />
+            <div className="leading-tight">
+              <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
+              <p className="text-xs text-white/80 whitespace-nowrap">JetSMART · by Limitless</p>
             </div>
-            <h1 className="text-lg font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
           </div>
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -156,11 +161,16 @@ const Layout = ({ children }: LayoutProps) => {
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
               <div className="flex h-full flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
-                <div className="flex h-16 shrink-0 items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-                    <img src="/favicon.svg" alt="Gestor Voucher ATO" className="h-8 w-8" />
+                <div className="flex shrink-0 flex-col gap-2 pt-4">
+                  <img
+                    src="/logo.svg"
+                    alt="Gestor Voucher ATO"
+                    className="w-full max-w-[200px] h-auto"
+                  />
+                  <div className="leading-tight">
+                    <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
+                    <p className="text-xs text-white/80 whitespace-nowrap">JetSMART · by Limitless</p>
                   </div>
-                  <h1 className="text-lg font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -227,11 +237,16 @@ const Layout = ({ children }: LayoutProps) => {
               </div>
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-              <img src="/favicon.svg" alt="Gestor Voucher ATO" className="h-6 w-6" />
+          <div className="flex flex-col items-start gap-1">
+            <img
+              src="/logo.svg"
+              alt="Gestor Voucher ATO"
+              className="h-7 w-auto max-w-[180px]"
+            />
+            <div className="leading-tight">
+              <h1 className="text-sm font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
+              <p className="text-[11px] text-white/80 whitespace-nowrap">JetSMART · by Limitless</p>
             </div>
-            <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
           </div>
         </div>
       </div>

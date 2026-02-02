@@ -46,18 +46,28 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
         {/* Panel Izquierdo - Información */}
-        <div className="hidden md:block space-y-6">
-          <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="Gestor Voucher ATO" className="h-12 w-auto" />
-            <div>
-              <h1 className="text-4xl font-bold">Gestor Voucher ATO</h1>
-              <p className="text-muted-foreground">Sistema de Gestión de Requerimientos</p>
-            </div>
-          </div>
+        <div className="hidden md:block relative overflow-hidden rounded-2xl border bg-card/50">
+          {/* Fondo tipo marca de agua */}
+          <div
+            className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-15 blur-sm scale-105 pointer-events-none"
+            aria-hidden="true"
+          />
+          {/* Overlay para asegurar contraste */}
+          <div
+            className="absolute inset-0 bg-gradient-to-br from-background/90 via-background/55 to-background/85 pointer-events-none"
+            aria-hidden="true"
+          />
 
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold">Características</h2>
-            <ul className="space-y-3">
+          <div className="relative z-10 p-6 space-y-6">
+            <div className="flex flex-col items-start gap-3">
+              <h1 className="sr-only">Gestor Voucher ATO</h1>
+              <img src="/logo.svg" alt="Gestor Voucher ATO" className="h-16 w-auto max-w-[520px]" />
+              <p className="text-muted-foreground">JetSMART · by Limitless</p>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">Características</h2>
+              <ul className="space-y-3">
               <li className="flex items-start gap-3">
                 <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
                   <Shield className="h-4 w-4 text-primary" />
@@ -91,13 +101,21 @@ const Login = () => {
                   </p>
                 </div>
               </li>
-            </ul>
+              </ul>
+            </div>
           </div>
         </div>
 
         {/* Panel Derecho - Login */}
         <Card className="shadow-2xl">
           <CardHeader className="text-center">
+            {/* Branding en móvil (el panel izquierdo está oculto) */}
+            <div className="md:hidden flex flex-col items-center gap-2">
+              <h1 className="sr-only">Gestor Voucher ATO</h1>
+              <img src="/logo.svg" alt="Gestor Voucher ATO" className="h-12 w-auto max-w-[260px]" />
+              <div className="text-xs text-muted-foreground">JetSMART · by Limitless</div>
+              <div className="w-full border-t mt-2" />
+            </div>
             <div className="flex justify-center mb-4">
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <Lock className="h-8 w-8 text-primary" />
