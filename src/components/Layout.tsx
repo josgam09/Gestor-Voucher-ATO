@@ -80,7 +80,7 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
           <div className="flex shrink-0 flex-col gap-2 pt-4">
             <img
-              src="/logo.svg"
+              src="/logo-sidebar.svg"
               alt="Gestor Voucher ATO"
               className="w-full max-w-[200px] h-auto"
             />
@@ -163,7 +163,7 @@ const Layout = ({ children }: LayoutProps) => {
               <div className="flex h-full flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
                 <div className="flex shrink-0 flex-col gap-2 pt-4">
                   <img
-                    src="/logo.svg"
+                    src="/logo-sidebar.svg"
                     alt="Gestor Voucher ATO"
                     className="w-full max-w-[200px] h-auto"
                   />
@@ -239,7 +239,7 @@ const Layout = ({ children }: LayoutProps) => {
           </Sheet>
           <div className="flex flex-col items-start gap-1">
             <img
-              src="/logo.svg"
+              src="/logo-sidebar.svg"
               alt="Gestor Voucher ATO"
               className="h-7 w-auto max-w-[180px]"
             />

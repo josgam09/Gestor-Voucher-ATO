@@ -43,18 +43,18 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 md:from-brand-blue-600 md:via-brand-blue-600 md:to-brand-blue-600 p-4">
       <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
         {/* Panel Izquierdo - Información */}
         <div className="hidden md:block relative overflow-hidden rounded-2xl border bg-card/50">
           {/* Fondo tipo marca de agua */}
           <div
-            className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-15 blur-sm scale-105 pointer-events-none"
+            className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-25 blur-sm scale-105 pointer-events-none"
             aria-hidden="true"
           />
           {/* Overlay para asegurar contraste */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-background/90 via-background/55 to-background/85 pointer-events-none"
+            className="absolute inset-0 bg-gradient-to-br from-background/80 via-background/35 to-background/75 pointer-events-none"
             aria-hidden="true"
           />
 
