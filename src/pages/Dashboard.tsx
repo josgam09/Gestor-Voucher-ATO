@@ -22,8 +22,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AlertCircle, CheckCircle, Clock, TrendingUp, Plus, Download, Filter, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart as BarChartIcon, ChevronDown, ChevronUp, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { RequirementStatus, RequirementPriority, OrigenConsulta, TipoSolicitud, Pais, AsesorName } from '@/types/requirement';
+import { Link, useNavigate } from 'react-router-dom';
+import { RequirementStatus, RequirementPriority, BaseOrigen, Pais, AsesorName } from '@/types/requirement';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -45,6 +45,7 @@ const ASESORES: AsesorName[] = [
 const Dashboard = () => {
   const { requirements } = useRequirements();
   const { user, hasRole } = useAuth();
+  const navigate = useNavigate();
 
   // Estados para filtros
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -54,8 +55,7 @@ const Dashboard = () => {
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [countryFilter, setCountryFilter] = useState<Pais | 'all'>('all');
-  const [origenFilter, setOrigenFilter] = useState<OrigenConsulta | 'all'>('all');
-  const [tipoSolicitudFilter, setTipoSolicitudFilter] = useState<TipoSolicitud | 'all'>('all');
+  const [origenFilter, setOrigenFilter] = useState<BaseOrigen | 'all'>('all');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('all');
   const [motivoFilter, setMotivoFilter] = useState<string>('all');
 
@@ -71,7 +71,6 @@ const Dashboard = () => {
     priorityFilter !== 'all',
     countryFilter !== 'all',
     origenFilter !== 'all',
-    tipoSolicitudFilter !== 'all',
     assignedToFilter !== 'all',
     motivoFilter !== 'all',
   ].filter(Boolean).length;
@@ -85,15 +84,14 @@ const Dashboard = () => {
     setDateRange(undefined);
     setCountryFilter('all');
     setOrigenFilter('all');
-    setTipoSolicitudFilter('all');
     setAssignedToFilter('all');
     setMotivoFilter('all');
     toast.success('Filtros limpiados');
   };
 
   // Filtrar casos según el rol
-  const requirementsToShow = hasRole(['ANALISTA']) && user
-    ? requirements.filter(req => req.assignedTo === user.name)
+  const requirementsToShow = hasRole(['AEROPUERTO_ATO']) && user
+    ? requirements.filter(req => req.nombreAsesor === user.name)
     : requirements;
 
   // Función para manejar el ordenamiento
@@ -167,10 +165,7 @@ const Dashboard = () => {
       const matchesCountry = countryFilter === 'all' || req.pais === countryFilter;
 
       // Filtro de origen
-      const matchesOrigen = origenFilter === 'all' || req.origenConsulta === origenFilter;
-
-      // Filtro de tipo de solicitud
-      const matchesTipoSolicitud = tipoSolicitudFilter === 'all' || req.tipoSolicitud === tipoSolicitudFilter;
+      const matchesOrigen = origenFilter === 'all' || req.baseOrigen === origenFilter;
 
       // Filtro de asignado a
       const matchesAssignedTo = assignedToFilter === 'all' || 
@@ -179,13 +174,13 @@ const Dashboard = () => {
       // Filtro de motivo
       const matchesMotivo = motivoFilter === 'all' || req.motivo === motivoFilter;
 
-      return matchesSearch && matchesStatus && matchesPriority && matchesDate && matchesCountry && matchesOrigen && matchesTipoSolicitud && matchesAssignedTo && matchesMotivo;
+      return matchesSearch && matchesStatus && matchesPriority && matchesDate && matchesCountry && matchesOrigen && matchesAssignedTo && matchesMotivo;
     });
 
     // Aplicar ordenamiento
     return filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number = '';
+      let bValue: string | number = '';
 
       switch (sortColumn) {
         case 'ticketNumber':
@@ -204,13 +199,9 @@ const Dashboard = () => {
           aValue = a.status;
           bValue = b.status;
           break;
-        case 'origenConsulta':
-          aValue = a.origenConsulta;
-          bValue = b.origenConsulta;
-          break;
-        case 'tipoSolicitud':
-          aValue = a.tipoSolicitud;
-          bValue = b.tipoSolicitud;
+        case 'baseOrigen':
+          aValue = a.baseOrigen;
+          bValue = b.baseOrigen;
           break;
         case 'motivo':
           aValue = a.motivo || '';
@@ -221,28 +212,22 @@ const Dashboard = () => {
           bValue = b.assignedTo || '';
           break;
         default:
-          aValue = a.createdAt;
-          bValue = b.createdAt;
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
       }
 
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [requirementsToShow, search, statusFilter, priorityFilter, dateFilter, dateRange, countryFilter, origenFilter, tipoSolicitudFilter, assignedToFilter, motivoFilter, sortColumn, sortDirection]);
+  }, [requirementsToShow, search, statusFilter, priorityFilter, dateFilter, dateRange, countryFilter, origenFilter, assignedToFilter, motivoFilter, sortColumn, sortDirection]);
 
   const stats = {
     total: filteredRequirements.length,
-    nuevo: filteredRequirements.filter(r => r.status === 'nuevo').length,
-    enGestion: filteredRequirements.filter(r => 
-      ['en-proceso', 'pendiente-informacion', 'respuesta-agencia', 'respuesta-otra-area'].includes(r.status)
-    ).length,
-    escalado: filteredRequirements.filter(r => 
-      ['pendiente-supervisor', 'pendiente-otra-area', 'pendiente-agencia'].includes(r.status)
-    ).length,
-    cerrado: filteredRequirements.filter(r => 
-      ['resuelto', 'cerrado'].includes(r.status)
-    ).length,
+    ingresado: filteredRequirements.filter(r => r.status === 'ingresado').length,
+    enGestion: filteredRequirements.filter(r => r.status === 'en-gestion').length,
+    revisionSupervisor: filteredRequirements.filter(r => r.status === 'revision-supervisor').length,
+    enviado: filteredRequirements.filter(r => r.status === 'enviado').length,
     critical: filteredRequirements.filter(r => r.priority === 'critica').length,
   };
 
@@ -250,7 +235,7 @@ const Dashboard = () => {
   const origenChartData = useMemo(() => {
     const origenCounts: Record<string, number> = {};
     filteredRequirements.forEach(req => {
-      origenCounts[req.origenConsulta] = (origenCounts[req.origenConsulta] || 0) + 1;
+      origenCounts[req.baseOrigen] = (origenCounts[req.baseOrigen] || 0) + 1;
     });
     return Object.entries(origenCounts).map(([origen, count]) => ({
       origen,
@@ -274,9 +259,9 @@ const Dashboard = () => {
         assignedCounts[asesor] = { total: 0, nuevo: 0, enGestion: 0, cerrado: 0 };
       }
       assignedCounts[asesor].total += 1;
-      if (req.status === 'nuevo') assignedCounts[asesor].nuevo += 1;
-      if (['en-proceso', 'pendiente-informacion', 'respuesta-agencia', 'respuesta-otra-area'].includes(req.status)) assignedCounts[asesor].enGestion += 1;
-      if (['resuelto', 'cerrado'].includes(req.status)) assignedCounts[asesor].cerrado += 1;
+      if (req.status === 'ingresado') assignedCounts[asesor].nuevo += 1;
+      if (req.status === 'en-gestion' || req.status === 'revision-supervisor') assignedCounts[asesor].enGestion += 1;
+      if (req.status === 'enviado') assignedCounts[asesor].cerrado += 1;
     });
     
     return Object.entries(assignedCounts)
@@ -300,8 +285,8 @@ const Dashboard = () => {
         motivoCounts[motivo] = { total: 0, pendiente: 0, cerrado: 0 };
       }
       motivoCounts[motivo].total += 1;
-      if (!['resuelto', 'cerrado'].includes(req.status)) motivoCounts[motivo].pendiente += 1;
-      if (['resuelto', 'cerrado'].includes(req.status)) motivoCounts[motivo].cerrado += 1;
+      if (req.status !== 'enviado') motivoCounts[motivo].pendiente += 1;
+      if (req.status === 'enviado') motivoCounts[motivo].cerrado += 1;
     });
     
     return Object.entries(motivoCounts).map(([motivo, counts]) => ({
@@ -338,14 +323,14 @@ const Dashboard = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Ticket', 'País', 'Origen', 'Tipo', 'PNR/TKT', 'Estado', 'Prioridad', 'Asignado a', 'Motivo', 'Fecha Creación'];
+    const headers = ['Ticket', 'País', 'Base Origen', 'PNR', 'Estado', 'Fecha Envío', 'Prioridad', 'Asignado a', 'Motivo', 'Fecha Creación'];
     const rows = filteredRequirements.map(req => [
       req.ticketNumber,
       req.pais,
-      req.origenConsulta,
-      req.tipoSolicitud,
+      req.baseOrigen,
       req.pnrTktLocalizador,
       req.status,
+      req.fechaEnvioVoucher ? new Date(req.fechaEnvioVoucher).toLocaleDateString('es-AR') : '',
       req.priority,
       req.assignedTo || '',
       req.motivo || '',
@@ -367,6 +352,17 @@ const Dashboard = () => {
     document.body.removeChild(link);
   };
 
+  // Obtener bases únicas para el filtro (dependiente de país)
+  const uniqueBases = useMemo(() => {
+    const relevant = countryFilter === 'all'
+      ? requirementsToShow
+      : requirementsToShow.filter(r => r.pais === countryFilter);
+
+    return Array.from(
+      new Set(relevant.map(r => r.baseOrigen).filter(Boolean))
+    ).sort();
+  }, [requirementsToShow, countryFilter]);
+
   // Obtener motivos únicos para el filtro
   const uniqueMotivos = useMemo(() => {
     const motivos = new Set<string>();
@@ -382,15 +378,17 @@ const Dashboard = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {hasRole(['ANALISTA']) 
-              ? `Tus casos asignados - ${user?.name}`
+            {hasRole(['AEROPUERTO_ATO']) 
+              ? `Tus requerimientos ingresados - ${user?.name}`
+              : hasRole(['SOPORTE_CC'])
+              ? 'Gestión de vouchers (casos ingresados por ATO)'
               : hasRole(['SUPERVISOR'])
               ? 'Control y supervisión de todos los casos'
               : 'Resumen general de requerimientos y gestión'
             }
           </p>
         </div>
-        {hasRole(['ADMINISTRADOR', 'SUPERVISOR']) && (
+        {hasRole(['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO']) && (
         <Link to="/requirements/new">
           <Button size="lg" className="gap-2">
             <Plus className="h-5 w-5" />
@@ -401,9 +399,9 @@ const Dashboard = () => {
       </div>
 
       {/* Estadísticas Compactas */}
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
-          title={hasRole(['ANALISTA']) ? "Mis Requerimientos" : "Total Requerimientos"}
+          title={hasRole(['AEROPUERTO_ATO']) ? "Mis Requerimientos" : "Total Requerimientos"}
           value={stats.total}
           icon={TrendingUp}
           trend="+12% vs mes anterior"
@@ -411,8 +409,8 @@ const Dashboard = () => {
           color="primary"
         />
         <StatCard
-          title="Nuevos"
-          value={stats.nuevo}
+          title="Ingresados"
+          value={stats.ingresado}
           icon={AlertCircle}
           color="primary"
         />
@@ -423,8 +421,14 @@ const Dashboard = () => {
           color="warning"
         />
         <StatCard
-          title="Cerrados"
-          value={stats.cerrado}
+          title="Revisión Supervisor"
+          value={stats.revisionSupervisor}
+          icon={Clock}
+          color="warning"
+        />
+        <StatCard
+          title="Enviados"
+          value={stats.enviado}
           icon={CheckCircle}
           color="success"
         />
@@ -439,7 +443,7 @@ const Dashboard = () => {
             <div>
               <Label htmlFor="dateFilter" className="text-xs font-medium mb-1.5 block">Periodo</Label>
               <Select value={dateFilter} onValueChange={(value) => {
-                setDateFilter(value as any);
+                setDateFilter(value as 'all' | 'today' | 'week' | 'month' | 'year' | 'custom');
                 if (value !== 'custom') setDateRange(undefined);
               }}>
                 <SelectTrigger id="dateFilter" className="h-9">
@@ -477,14 +481,10 @@ const Dashboard = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="nuevo">Nuevo</SelectItem>
-                  <SelectItem value="en-proceso">En Proceso</SelectItem>
-                  <SelectItem value="pendiente-informacion">Pendiente Info</SelectItem>
-                  <SelectItem value="pendiente-supervisor">Pendiente Supervisor</SelectItem>
-                  <SelectItem value="pendiente-otra-area">Pendiente Otra Área</SelectItem>
-                  <SelectItem value="pendiente-agencia">Pendiente Agencia</SelectItem>
-                  <SelectItem value="resuelto">Resuelto</SelectItem>
-                  <SelectItem value="cerrado">Cerrado</SelectItem>
+                  <SelectItem value="ingresado">Ingresado</SelectItem>
+                  <SelectItem value="en-gestion">En Gestión</SelectItem>
+                  <SelectItem value="revision-supervisor">Revisión Supervisor</SelectItem>
+                  <SelectItem value="enviado">Enviado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -596,43 +596,29 @@ const Dashboard = () => {
                       <SelectItem value="BR">🇧🇷 Brasil</SelectItem>
                       <SelectItem value="CL">🇨🇱 Chile</SelectItem>
                       <SelectItem value="CO">🇨🇴 Colombia</SelectItem>
+                      <SelectItem value="DO">🇩🇴 República Dominicana</SelectItem>
                       <SelectItem value="EC">🇪🇨 Ecuador</SelectItem>
                       <SelectItem value="PE">🇵🇪 Perú</SelectItem>
                       <SelectItem value="PY">🇵🇾 Paraguay</SelectItem>
-                      <SelectItem value="RD">🇩🇴 RD</SelectItem>
                       <SelectItem value="UY">🇺🇾 Uruguay</SelectItem>
-                      <SelectItem value="US">🇺🇸 Estados Unidos</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Origen */}
+                {/* Base Origen */}
                 <div>
-                  <Label htmlFor="origenFilter" className="text-xs font-medium mb-1.5 block">Origen</Label>
-                  <Select value={origenFilter} onValueChange={(value) => setOrigenFilter(value as OrigenConsulta | 'all')}>
+                  <Label htmlFor="origenFilter" className="text-xs font-medium mb-1.5 block">Base Origen</Label>
+                  <Select value={origenFilter} onValueChange={(value) => setOrigenFilter(value as BaseOrigen | 'all')}>
                     <SelectTrigger id="origenFilter" className="h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="AMADEUS">AMADEUS</SelectItem>
-                      <SelectItem value="SABRE">SABRE</SelectItem>
-                      <SelectItem value="NO CORRESPONDE">NO CORRESPONDE</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Tipo de Solicitud */}
-                <div>
-                  <Label htmlFor="tipoSolicitudFilter" className="text-xs font-medium mb-1.5 block">Tipo</Label>
-                  <Select value={tipoSolicitudFilter} onValueChange={(value) => setTipoSolicitudFilter(value as TipoSolicitud | 'all')}>
-                    <SelectTrigger id="tipoSolicitudFilter" className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="Solicitudes">Solicitudes</SelectItem>
-                      <SelectItem value="Reclamos">Reclamos</SelectItem>
+                      {uniqueBases.map((base) => (
+                        <SelectItem key={base} value={base}>
+                          {base}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -682,12 +668,12 @@ const Dashboard = () => {
       {/* Gráficos - Solo para Admin y Supervisor */}
       {hasRole(['ADMINISTRADOR', 'SUPERVISOR']) && filteredRequirements.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {/* Gráfico de Torta - Requerimientos por Origen */}
+          {/* Gráfico de Torta - Requerimientos por Base Origen */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <PieChartIcon className="h-4 w-4" />
-                Requerimientos por Origen
+                Requerimientos por Base Origen
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
@@ -731,7 +717,7 @@ const Dashboard = () => {
                   <Legend />
                   <Bar dataKey="nuevos" fill={PANTONE_3125} name="Nuevos" />
                   <Bar dataKey="enGestion" fill={PANTONE_534} name="En Gestión" />
-                  <Bar dataKey="cerrados" fill={PANTONE_1805} name="Cerrados" />
+                  <Bar dataKey="cerrados" fill={PANTONE_1805} name="Enviados (Cerrados)" />
                 </BarChart>
               </ResponsiveContainer>
           </CardContent>
@@ -759,7 +745,7 @@ const Dashboard = () => {
                           <div className="bg-white p-3 border-2 rounded shadow-lg" style={{ borderColor: PANTONE_534 }}>
                             <p className="font-semibold mb-2" style={{ color: PANTONE_534 }}>{data.fullMotivo}</p>
                             <p className="text-sm font-medium" style={{ color: PANTONE_534 }}>Pendientes: {data.pendiente}</p>
-                            <p className="text-sm font-medium" style={{ color: PANTONE_3125 }}>Cerrados: {data.cerrado}</p>
+                            <p className="text-sm font-medium" style={{ color: PANTONE_3125 }}>Enviados: {data.cerrado}</p>
                             <p className="text-sm font-bold mt-1" style={{ color: PANTONE_1805 }}>Total: {data.total}</p>
                 </div>
                         );
@@ -769,7 +755,7 @@ const Dashboard = () => {
                   />
                   <Legend />
                   <Bar dataKey="pendiente" stackId="a" fill={PANTONE_534} name="Pendiente" />
-                  <Bar dataKey="cerrado" stackId="a" fill={PANTONE_3125} name="Cerrado" />
+                  <Bar dataKey="cerrado" stackId="a" fill={PANTONE_3125} name="Enviado (Cerrado)" />
                 </BarChart>
               </ResponsiveContainer>
           </CardContent>
@@ -817,11 +803,14 @@ const Dashboard = () => {
                       {sortColumn !== 'status' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
                     </Button>
                   </TableHead>
+                  <TableHead className="py-2 text-xs font-semibold">
+                    Fecha Envío
+                  </TableHead>
                   <TableHead className="py-2">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent whitespace-normal text-left" onClick={() => handleSort('origenConsulta')}>
-                      Origen
-                      {sortColumn === 'origenConsulta' && (sortDirection === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />)}
-                      {sortColumn !== 'origenConsulta' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent whitespace-normal text-left" onClick={() => handleSort('baseOrigen')}>
+                      Base Origen
+                      {sortColumn === 'baseOrigen' && (sortDirection === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />)}
+                      {sortColumn !== 'baseOrigen' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
                     </Button>
                   </TableHead>
                   <TableHead className="py-2">
@@ -849,7 +838,7 @@ const Dashboard = () => {
                   </TableRow>
                 ) : (
                   filteredRequirements.slice(0, 20).map((req) => (
-                    <TableRow key={req.id} className="cursor-pointer hover:bg-accent" onClick={() => window.location.href = `/requirements/${req.id}`}>
+                    <TableRow key={req.id} className="cursor-pointer hover:bg-accent" onClick={() => navigate(`/requirements/${req.id}`)}>
                       <TableCell className="py-2">
                         <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded font-semibold">
                           {req.ticketNumber}
@@ -870,7 +859,12 @@ const Dashboard = () => {
                         <RequirementStatusBadge status={req.status} />
                       </TableCell>
                       <TableCell className="py-2">
-                        <span className="text-xs">{req.origenConsulta}</span>
+                        <span className="text-xs">
+                          {req.fechaEnvioVoucher ? new Date(req.fechaEnvioVoucher).toLocaleDateString('es-AR') : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono">{req.baseOrigen}</span>
                       </TableCell>
                       <TableCell className="py-2">
                         <span className="text-xs">{req.motivo || '-'}</span>

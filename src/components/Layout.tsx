@@ -26,14 +26,14 @@ const Layout = ({ children }: LayoutProps) => {
 
   // Navegación base para todos
   const baseNavigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA'] },
-    { name: 'Requerimientos', href: '/requirements', icon: List, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA'] },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO', 'SOPORTE_CC'] },
+    { name: 'Requerimientos', href: '/requirements', icon: List, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO', 'SOPORTE_CC'] },
   ];
 
   // Navegación según rol
   const roleNavigation = [
-    // Analista puede crear nuevos requerimientos
-    { name: 'Nuevo Requerimiento', href: '/requirements/new', icon: PlusCircle, roles: ['ADMINISTRADOR', 'ANALISTA', 'SUPERVISOR'] },
+    // Aeropuerto (ATO) puede crear nuevos requerimientos
+    { name: 'Nuevo Requerimiento', href: '/requirements/new', icon: PlusCircle, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO'] },
     // Supervisor tiene bandeja especial
     { name: 'Bandeja Supervisor', href: '/supervisor/inbox', icon: Inbox, roles: ['ADMINISTRADOR', 'SUPERVISOR'] },
     // Administrador tiene panel de administración
@@ -61,8 +61,19 @@ const Layout = ({ children }: LayoutProps) => {
     switch (role) {
       case 'ADMINISTRADOR': return 'bg-red-500/10 text-red-600';
       case 'SUPERVISOR': return 'bg-blue-500/10 text-blue-600';
-      case 'ANALISTA': return 'bg-green-500/10 text-green-600';
+      case 'AEROPUERTO_ATO': return 'bg-emerald-500/10 text-emerald-600';
+      case 'SOPORTE_CC': return 'bg-violet-500/10 text-violet-600';
       default: return 'bg-muted';
+    }
+  };
+
+  const getRoleLabel = (role?: string) => {
+    switch (role) {
+      case 'AEROPUERTO_ATO': return 'Aeropuerto (ATO)';
+      case 'SOPORTE_CC': return 'Soporte CC';
+      case 'SUPERVISOR': return 'Supervisor';
+      case 'ADMINISTRADOR': return 'Administrador';
+      default: return role || '';
     }
   };
 
@@ -77,76 +88,89 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-background">
       {/* Sidebar Desktop */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
-          <div className="flex shrink-0 flex-col gap-2 pt-4">
-            <img
-              src="/logo-sidebar.svg"
-              alt="Gestor Voucher ATO"
-              className="w-full max-w-[200px] h-auto"
-            />
-            <div className="leading-tight">
-              <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
-              <p className="text-xs text-white/80 whitespace-nowrap">JetSMART · by Limitless</p>
-            </div>
-          </div>
-          <nav className="flex flex-1 flex-col">
-            <ul role="list" className="flex flex-1 flex-col gap-y-7">
-              <li>
-                <ul role="list" className="-mx-2 space-y-1">
-                  {navigation.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <li key={item.name}>
-                        <Link
-                          to={item.href}
-                          className={`
-                            group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors
-                            ${
-                              isActive(item.href)
-                                ? 'bg-sidebar-accent text-white'
-                                : 'text-white hover:bg-sidebar-accent hover:text-white'
-                            }
-                          `}
-                        >
-                          <Icon className="h-6 w-6 shrink-0" />
-                          {item.name}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
-            </ul>
-          </nav>
-          
-          {/* User Info Section */}
-          {user && (
-            <div className="mt-auto border-t border-sidebar-border pt-4">
-              <div className="flex items-center gap-3 px-2">
-                <Avatar>
-                  <AvatarFallback className={getRoleBadgeColor(user.role)}>
-                    {getUserInitials(user.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-sidebar-foreground truncate">
-                    {user.name}
-                  </p>
-                  <Badge variant="outline" className={`text-xs ${getRoleBadgeColor(user.role)}`}>
-                    {user.role}
-                  </Badge>
-                </div>
+        <div className="relative flex grow flex-col overflow-hidden bg-sidebar">
+          {/* Fondo marca de agua: Aeropuerto */}
+          <div
+            className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-20 blur-[1px] scale-105 pointer-events-none"
+            aria-hidden="true"
+          />
+          {/* Overlay para contraste */}
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/20 to-black/35 pointer-events-none"
+            aria-hidden="true"
+          />
+
+          <div className="relative z-10 flex grow flex-col gap-y-5 overflow-y-auto px-6 pb-4">
+            <div className="flex shrink-0 flex-col gap-2 pt-4">
+              <img
+                src="/banner-header.png"
+                alt="Gestor Voucher ATO"
+                className="w-full max-w-[200px] h-auto"
+              />
+              <div className="leading-tight">
+                <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
+                <p className="text-xs text-white/80 whitespace-nowrap">JetSMART · by Limitless</p>
               </div>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-2 mt-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-                Cerrar Sesión
-              </Button>
             </div>
-          )}
+            <nav className="flex flex-1 flex-col">
+              <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                <li>
+                  <ul role="list" className="-mx-2 space-y-1">
+                    {navigation.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <li key={item.name}>
+                          <Link
+                            to={item.href}
+                            className={`
+                              group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors
+                              ${
+                                isActive(item.href)
+                                  ? 'bg-sidebar-accent text-white'
+                                  : 'text-white hover:bg-sidebar-accent hover:text-white'
+                              }
+                            `}
+                          >
+                            <Icon className="h-6 w-6 shrink-0" />
+                            {item.name}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              </ul>
+            </nav>
+            
+            {/* User Info Section */}
+            {user && (
+              <div className="mt-auto border-t border-sidebar-border/70 pt-4">
+                <div className="flex items-center gap-3 px-2">
+                  <Avatar>
+                    <AvatarFallback className={getRoleBadgeColor(user.role)}>
+                      {getUserInitials(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                      {user.name}
+                    </p>
+                    <Badge variant="outline" className={`text-xs ${getRoleBadgeColor(user.role)}`}>
+                      {getRoleLabel(user.role)}
+                    </Badge>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 mt-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Cerrar Sesión
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -160,86 +184,99 @@ const Layout = ({ children }: LayoutProps) => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
-              <div className="flex h-full flex-col gap-y-5 overflow-y-auto bg-sidebar px-6 pb-4">
-                <div className="flex shrink-0 flex-col gap-2 pt-4">
-                  <img
-                    src="/logo-sidebar.svg"
-                    alt="Gestor Voucher ATO"
-                    className="w-full max-w-[200px] h-auto"
-                  />
-                  <div className="leading-tight">
-                    <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
-                    <p className="text-xs text-white/80 whitespace-nowrap">JetSMART · by Limitless</p>
-                  </div>
-                </div>
-                <nav className="flex flex-1 flex-col">
-                  <ul role="list" className="flex flex-1 flex-col gap-y-7">
-                    <li>
-                      <ul role="list" className="-mx-2 space-y-1">
-                        {navigation.map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <li key={item.name}>
-                              <Link
-                                to={item.href}
-                                onClick={() => setOpen(false)}
-                                className={`
-                                  group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors
-                                  ${
-                                    isActive(item.href)
-                                      ? 'bg-sidebar-accent text-sidebar-primary'
-                                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary'
-                                  }
-                                `}
-                              >
-                                <Icon className="h-6 w-6 shrink-0" />
-                                {item.name}
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </li>
-                  </ul>
-                </nav>
-                
-                {/* User Info Mobile */}
-                {user && (
-                  <div className="mt-auto border-t border-sidebar-border pt-4">
-                    <div className="flex items-center gap-3 px-2">
-                      <Avatar>
-                        <AvatarFallback className={getRoleBadgeColor(user.role)}>
-                          {getUserInitials(user.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-sidebar-foreground truncate">
-                          {user.name}
-                        </p>
-                        <Badge variant="outline" className={`text-xs ${getRoleBadgeColor(user.role)}`}>
-                          {user.role}
-                        </Badge>
-                      </div>
+              <div className="relative h-full overflow-hidden bg-sidebar">
+                {/* Fondo marca de agua: Aeropuerto */}
+                <div
+                  className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-20 blur-[1px] scale-105 pointer-events-none"
+                  aria-hidden="true"
+                />
+                {/* Overlay para contraste */}
+                <div
+                  className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/20 to-black/35 pointer-events-none"
+                  aria-hidden="true"
+                />
+
+                <div className="relative z-10 flex h-full flex-col gap-y-5 overflow-y-auto px-6 pb-4">
+                  <div className="flex shrink-0 flex-col gap-2 pt-4">
+                    <img
+                      src="/banner-header.png"
+                      alt="Gestor Voucher ATO"
+                      className="w-full max-w-[200px] h-auto"
+                    />
+                    <div className="leading-tight">
+                      <h1 className="text-base font-semibold text-white whitespace-nowrap">Gestor Voucher ATO</h1>
+                      <p className="text-xs text-white/80 whitespace-nowrap">JetSMART · by Limitless</p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-2 mt-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      onClick={() => {
-                        setOpen(false);
-                        handleLogout();
-                      }}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Cerrar Sesión
-                    </Button>
                   </div>
-                )}
+                  <nav className="flex flex-1 flex-col">
+                    <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                      <li>
+                        <ul role="list" className="-mx-2 space-y-1">
+                          {navigation.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <li key={item.name}>
+                                <Link
+                                  to={item.href}
+                                  onClick={() => setOpen(false)}
+                                  className={`
+                                    group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors
+                                    ${
+                                      isActive(item.href)
+                                        ? 'bg-sidebar-accent text-white'
+                                        : 'text-white hover:bg-sidebar-accent hover:text-white'
+                                    }
+                                  `}
+                                >
+                                  <Icon className="h-6 w-6 shrink-0" />
+                                  {item.name}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </li>
+                    </ul>
+                  </nav>
+                  
+                  {/* User Info Mobile */}
+                  {user && (
+                    <div className="mt-auto border-t border-sidebar-border/70 pt-4">
+                      <div className="flex items-center gap-3 px-2">
+                        <Avatar>
+                          <AvatarFallback className={getRoleBadgeColor(user.role)}>
+                            {getUserInitials(user.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                            {user.name}
+                          </p>
+                          <Badge variant="outline" className={`text-xs ${getRoleBadgeColor(user.role)}`}>
+                            {getRoleLabel(user.role)}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-2 mt-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                        onClick={() => {
+                          setOpen(false);
+                          handleLogout();
+                        }}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Cerrar Sesión
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </SheetContent>
           </Sheet>
           <div className="flex flex-col items-start gap-1">
             <img
-              src="/logo-sidebar.svg"
+              src="/banner-header.png"
               alt="Gestor Voucher ATO"
               className="h-7 w-auto max-w-[180px]"
             />

@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, PlusCircle, List as ListIcon, Trash2, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-type ListCategory = 'requerimiento' | 'asignacion' | 'escalamiento' | 'sistema';
+type ListCategory = 'requerimiento' | 'asignacion' | 'revision' | 'sistema';
 
 interface CustomList {
   id: string;
@@ -159,7 +159,7 @@ const ListManagement = () => {
                   <SelectContent>
                     <SelectItem value="requerimiento">Requerimiento</SelectItem>
                     <SelectItem value="asignacion">Asignación</SelectItem>
-                    <SelectItem value="escalamiento">Escalamiento</SelectItem>
+                    <SelectItem value="revision">Revisión Supervisor</SelectItem>
                     <SelectItem value="sistema">Sistema</SelectItem>
                   </SelectContent>
                 </Select>

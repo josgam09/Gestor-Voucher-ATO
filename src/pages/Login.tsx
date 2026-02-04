@@ -43,25 +43,40 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 md:from-brand-blue-600 md:via-brand-blue-600 md:to-brand-blue-600 p-4">
+    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden bg-sidebar">
+      {/* Fondo global (igual al sidebar): turquesa + marca de agua Aeropuerto */}
+      <div
+        className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-20 blur-[1px] scale-105"
+        aria-hidden="true"
+      />
+      {/* Overlay para asegurar contraste */}
+      <div
+        className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/20 to-black/35"
+        aria-hidden="true"
+      />
+
       <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
         {/* Panel Izquierdo - Información */}
         <div className="hidden md:block relative overflow-hidden rounded-2xl border bg-card/50">
           {/* Fondo tipo marca de agua */}
           <div
-            className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-25 blur-sm scale-105 pointer-events-none"
+            className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-35 blur-[1px] scale-105 pointer-events-none"
             aria-hidden="true"
           />
           {/* Overlay para asegurar contraste */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-background/80 via-background/35 to-background/75 pointer-events-none"
+            className="absolute inset-0 bg-gradient-to-br from-background/85 via-background/45 to-background/80 pointer-events-none"
             aria-hidden="true"
           />
 
           <div className="relative z-10 p-6 space-y-6">
-            <div className="flex flex-col items-start gap-3">
-              <h1 className="sr-only">Gestor Voucher ATO</h1>
-              <img src="/logo.svg" alt="Gestor Voucher ATO" className="h-16 w-auto max-w-[520px]" />
+            <div className="flex flex-col items-center text-center gap-3">
+              <img
+                src="/banner-header.png"
+                alt="Gestor Voucher ATO"
+                className="h-24 w-full max-w-[560px] object-contain"
+              />
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Gestor Voucher ATO</h1>
               <p className="text-muted-foreground">JetSMART · by Limitless</p>
             </div>
 
@@ -97,7 +112,7 @@ const Login = () => {
                 <div>
                   <strong>Multi-Rol</strong>
                   <p className="text-sm text-muted-foreground">
-                    Perfiles diferenciados: Administrador, Supervisor, Analista
+                    Perfiles diferenciados: Aeropuerto (ATO), Soporte CC, Supervisor y Administrador
                   </p>
                 </div>
               </li>
@@ -107,12 +122,26 @@ const Login = () => {
         </div>
 
         {/* Panel Derecho - Login */}
-        <Card className="shadow-2xl">
+        <Card className="relative overflow-hidden shadow-2xl bg-card/60">
+          {/* Fondo replicado en el panel de login */}
+          <div
+            className="absolute inset-0 bg-[url('/aeropuerto.jpg')] bg-cover bg-center opacity-25 blur-[1px] scale-105 pointer-events-none"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-br from-background/90 via-background/70 to-background/85 pointer-events-none"
+            aria-hidden="true"
+          />
+
           <CardHeader className="text-center">
             {/* Branding en móvil (el panel izquierdo está oculto) */}
-            <div className="md:hidden flex flex-col items-center gap-2">
-              <h1 className="sr-only">Gestor Voucher ATO</h1>
-              <img src="/logo.svg" alt="Gestor Voucher ATO" className="h-12 w-auto max-w-[260px]" />
+            <div className="md:hidden flex flex-col items-center text-center gap-2">
+              <img
+                src="/banner-header.png"
+                alt="Gestor Voucher ATO"
+                className="h-16 w-full max-w-[320px] object-contain"
+              />
+              <h1 className="text-lg font-semibold tracking-tight text-foreground">Gestor Voucher ATO</h1>
               <div className="text-xs text-muted-foreground">JetSMART · by Limitless</div>
               <div className="w-full border-t mt-2" />
             </div>
@@ -126,7 +155,7 @@ const Login = () => {
               Ingresa con tus credenciales o usa las cuentas demo
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="relative z-10 space-y-6">
             {/* Formulario de Login */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -212,19 +241,35 @@ const Login = () => {
                   </div>
                 </Button>
 
-                {/* Analista Demo */}
+                {/* Aeropuerto (ATO) Demo */}
                 <Button
                   type="button"
                   variant="outline"
                   className="w-full justify-start gap-3 h-auto py-3"
-                  onClick={() => handleDemoLogin('analista@jetsmart.com')}
+                  onClick={() => handleDemoLogin('ato@jetsmart.com')}
                 >
                   <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
                     <UserCheck className="h-5 w-5 text-green-600" />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="font-semibold">Analista</div>
-                    <div className="text-xs text-muted-foreground">analista@jetsmart.com</div>
+                    <div className="font-semibold">Aeropuerto (ATO)</div>
+                    <div className="text-xs text-muted-foreground">ato@jetsmart.com</div>
+                  </div>
+                </Button>
+
+                {/* Soporte CC Demo */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3"
+                  onClick={() => handleDemoLogin('soportecc@jetsmart.com')}
+                >
+                  <div className="h-10 w-10 rounded-full bg-violet-500/10 flex items-center justify-center">
+                    <UserCheck className="h-5 w-5 text-violet-600" />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="font-semibold">Soporte CC</div>
+                    <div className="text-xs text-muted-foreground">soportecc@jetsmart.com</div>
                   </div>
                 </Button>
               </div>

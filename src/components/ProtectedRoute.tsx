@@ -9,7 +9,16 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+
+  // Mientras cargamos sesión desde localStorage, no redirigir aún
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-sm text-muted-foreground">Cargando sesión...</div>
+      </div>
+    );
+  }
 
   // Si no está autenticado, redirigir a login
   if (!user) {

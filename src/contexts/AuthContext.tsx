@@ -37,13 +37,22 @@ const DEMO_USERS: DemoUser[] = [
   },
   {
     id: '3',
-    name: 'Analista GDS',
-    email: 'analista@jetsmart.com',
+    name: 'Aeropuerto ATO',
+    email: 'ato@jetsmart.com',
     password: 'password123',
-    role: 'ANALISTA',
+    role: 'AEROPUERTO_ATO',
     isActive: true,
     createdAt: new Date('2025-01-01')
-  }
+  },
+  {
+    id: '4',
+    name: 'Soporte CC',
+    email: 'soportecc@jetsmart.com',
+    password: 'password123',
+    role: 'SOPORTE_CC',
+    isActive: true,
+    createdAt: new Date('2025-01-01')
+  },
 ];
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

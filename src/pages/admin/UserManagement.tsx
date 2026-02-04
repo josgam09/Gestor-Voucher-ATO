@@ -42,9 +42,17 @@ const UserManagement = () => {
     },
     {
       id: '3',
-      name: 'Analista GDS',
-      email: 'analista@jetsmart.com',
-      role: 'ANALISTA',
+      name: 'Aeropuerto ATO',
+      email: 'ato@jetsmart.com',
+      role: 'AEROPUERTO_ATO',
+      isActive: true,
+      createdAt: new Date('2025-01-01'),
+    },
+    {
+      id: '4',
+      name: 'Soporte CC',
+      email: 'soportecc@jetsmart.com',
+      role: 'SOPORTE_CC',
       isActive: true,
       createdAt: new Date('2025-01-01'),
     },
@@ -53,7 +61,7 @@ const UserManagement = () => {
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
-    role: 'ANALISTA' as UserRole,
+    role: 'AEROPUERTO_ATO' as UserRole,
   });
 
   const handleCreateUser = (e: React.FormEvent) => {
@@ -67,7 +75,7 @@ const UserManagement = () => {
     };
 
     setUsers([...users, user]);
-    setNewUser({ name: '', email: '', role: 'ANALISTA' });
+    setNewUser({ name: '', email: '', role: 'AEROPUERTO_ATO' });
     toast.success(`Usuario ${user.name} creado exitosamente`);
   };
 
@@ -91,7 +99,8 @@ const UserManagement = () => {
     switch (role) {
       case 'ADMINISTRADOR': return <Shield className="h-4 w-4" />;
       case 'SUPERVISOR': return <Users className="h-4 w-4" />;
-      case 'ANALISTA': return <UserCheck className="h-4 w-4" />;
+      case 'AEROPUERTO_ATO': return <UserCheck className="h-4 w-4" />;
+      case 'SOPORTE_CC': return <UserCheck className="h-4 w-4" />;
     }
   };
 
@@ -99,7 +108,8 @@ const UserManagement = () => {
     switch (role) {
       case 'ADMINISTRADOR': return 'bg-red-500/10 text-red-600';
       case 'SUPERVISOR': return 'bg-blue-500/10 text-blue-600';
-      case 'ANALISTA': return 'bg-green-500/10 text-green-600';
+      case 'AEROPUERTO_ATO': return 'bg-emerald-500/10 text-emerald-600';
+      case 'SOPORTE_CC': return 'bg-violet-500/10 text-violet-600';
     }
   };
 
@@ -161,7 +171,8 @@ const UserManagement = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ANALISTA">Analista</SelectItem>
+                    <SelectItem value="AEROPUERTO_ATO">Aeropuerto (ATO)</SelectItem>
+                    <SelectItem value="SOPORTE_CC">Soporte CC</SelectItem>
                     <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
                     <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
                   </SelectContent>

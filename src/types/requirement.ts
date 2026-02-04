@@ -1,15 +1,8 @@
 export type RequirementStatus = 
-  | 'nuevo' 
-  | 'en-proceso' 
-  | 'pendiente-informacion' 
-  | 'pendiente-supervisor' 
-  | 'respuesta-supervisor'
-  | 'pendiente-otra-area' 
-  | 'respuesta-otra-area'
-  | 'pendiente-agencia'
-  | 'respuesta-agencia'
-  | 'resuelto' 
-  | 'cerrado';
+  | 'ingresado'
+  | 'en-gestion'
+  | 'enviado'
+  | 'revision-supervisor';
 export type RequirementPriority = 'baja' | 'media' | 'alta' | 'critica';
 
 // Nombre del Asesor (13 asesores)
@@ -30,10 +23,13 @@ export type AsesorName =
 
 // Países
 export type Pais = 
-  | 'AR' | 'BR' | 'CL' | 'CO' | 'EC' | 'PE' | 'PY' | 'RD' | 'UY' | 'US';
+  | 'AR' | 'BR' | 'CL' | 'CO' | 'DO' | 'EC' | 'PE' | 'PY' | 'UY';
 
-// Origen Consulta
-export type OrigenConsulta = 'AMADEUS' | 'SABRE' | 'NO CORRESPONDE';
+// Base Origen (código IATA de base/aeropuerto)
+export type BaseOrigen = string;
+
+// Vuelo operado por
+export type VueloOperadoPor = 'JA' | 'WJ' | 'JZ' | 'J6';
 
 // Tipo de Solicitud (Nueva estructura)
 export type TipoSolicitud = 'Solicitudes' | 'Reclamos';
@@ -203,42 +199,7 @@ export interface RequirementHistory {
   comment?: string;
 }
 
-// Tipos de Usuario del Sistema
-export type UserRole = 'ANALISTA' | 'SUPERVISOR' | 'ADMINISTRADOR';
-
-// Opciones de Escalamiento
-export type EscalationOption = 'SUPERVISOR' | 'OTRA_AREA';
-
-// Nuevas opciones de gestión de casos
-export type CasoOpcion = 'SI_CERRAR_CASO' | 'NO_ESCALAR_CASO' | 'NO_INTERACTUAR_AGENCIA';
-
-// Áreas específicas para escalamiento
-export type AreaEscalamiento = 
-  | 'Cobros Ato'
-  | 'Sobreventa'
-  | 'Medios de pago'
-  | 'Facturación'
-  | 'Finanzas'
-  | 'Área Comercial'
-  | 'Ventas'
-  | 'Área legal'
-  | 'Distribución';
-
-// Estados adicionales para interacción con agencia
-export type RequirementStatus = 
-  | 'nuevo' 
-  | 'en-proceso' 
-  | 'pendiente-informacion' 
-  | 'pendiente-supervisor' 
-  | 'respuesta-supervisor'
-  | 'pendiente-otra-area' 
-  | 'pendiente-agencia'
-  | 'respuesta-agencia'
-  | 'resuelto' 
-  | 'cerrado';
-
-// Acciones del Supervisor
-export type SupervisorAction = 'autorizar_analista' | 'resolver_directo' | null;
+// (nota) Roles del sistema se definen en `src/types/user.ts`.
 
 export interface Requirement {
   id: string;
@@ -249,67 +210,39 @@ export interface Requirement {
   horaIngresoCorreo: string; // HH:MM (autogenerado al crear el requerimiento)
   correoElectronico: string;
   
-  // Sección 2: Origen de Consulta
+  // Sección 2: Origen de la Solicitud
   pais: Pais;
-  origenConsulta: OrigenConsulta;
-  esSoporteIngles: boolean; // Si/No
+  baseOrigen: BaseOrigen;
   
-  // Sección 3: Datos del Cliente
+  // Sección 3: Datos del Pasajero y Vuelo
   pnrTktLocalizador: string; // PNR - TKT - Localizador AMADEUS-SABRE
+
+  // Datos del Pasajero y Vuelo
+  pasajeroNombreApellido?: string;
+  pasajeroDocumento?: string; // RUT / DNI / PASAPORTE
+  pasajeroCorreo?: string;
+  fechaVuelo?: Date;
+  numeroVuelo?: string;
+  tramoVuelo?: string;
+  vueloOperadoPor?: VueloOperadoPor;
   
-  // Sección 4: Clasificación
-  tipoSolicitud: TipoSolicitud | '';
+  // Sección 4: Motivo y Sub Motivo de la Solicitud de Voucher
   motivo: string; // Motivo seleccionado
   subMotivo: string; // Sub motivo seleccionado
   subMotivoOtros?: string; // Campo libre para "Otros"
-  
-  solicitudCliente: string; // Texto largo
-  
-  // Control de gestión de casos (Nueva estructura)
-  casoOpcion: CasoOpcion; // Nueva opción principal
-  escaladoA?: EscalationOption; // SUPERVISOR | OTRA_AREA
-  areaEscalamiento?: AreaEscalamiento; // Área específica si es OTRA_AREA
-  
-  // Análisis del Analista (obligatorio cuando escala a supervisor)
-  analisisAnalista?: string; // Resumen y motivo del escalamiento al supervisor
-  
-  // Gestión del Supervisor (para casos escalados)
-  respuestaSupervisor?: string; // Respuesta/instrucciones del supervisor al analista
-  accionSupervisor?: SupervisorAction; // Qué decidió hacer el supervisor
-  supervisorResolvio?: boolean; // Si el supervisor resolvió directamente el caso
-  
-  // Interacción con Agencia
-  consultaAgencia?: string; // Consulta realizada a la agencia
-  respuestaAgencia?: string; // Respuesta recibida de la agencia
-  historialInteraccionAgencia?: Array<{
-    id: string;
-    fecha: Date;
-    consulta: string;
-    respuesta: string;
-    usuario: string;
-  }>;
 
-  // Interacción con Otra Área
-  consultaOtraArea?: string; // Consulta realizada a la otra área
-  respuestaOtraArea?: string; // Respuesta recibida de la otra área
-  historialInteraccionOtraArea?: Array<{
-    id: string;
-    fecha: Date;
-    consulta: string;
-    respuesta: string;
-    usuario: string;
-    area: string; // Área específica
-  }>;
-  
-  informacionBrindada: string; // Texto largo
-  observaciones: string; // Texto largo
+  comentariosAdicionales?: string; // Campo libre adicional
+
+  // Sección 5: Información del Voucher
+  montoVoucherUsd: number; // Monto del Voucher (USD)
+  fechaEnvioVoucher?: Date; // Fecha en que se envió el voucher (cuando status = "enviado")
+  observaciones?: string; // Notas internas (opcional)
   
   // Campos de gestión interna
   status: RequirementStatus;
   priority: RequirementPriority;
   assignedTo?: string;
   assignedTeam?: string;
-  slaDeadline?: Date;
   
   // Timestamps
   initialDate: Date;

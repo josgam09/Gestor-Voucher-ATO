@@ -43,8 +43,7 @@ type SortField =
   | 'pais'
   | 'initialDate'
   | 'horaIngresoCorreo'
-  | 'origenConsulta'
-  | 'tipoSolicitud'
+  | 'baseOrigen'
   | 'motivo'
   | 'subMotivo'
   | 'assignedTo'
@@ -115,7 +114,7 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
 
   // Filtrar y ordenar requerimientos
   const filteredAndSortedRequirements = useMemo(() => {
-    let filtered = requirements.filter(requirement => {
+    const filtered = requirements.filter(requirement => {
       const searchLower = searchTerm.toLowerCase();
       return (
         requirement.ticketNumber.toLowerCase().includes(searchLower) ||
@@ -128,8 +127,8 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
 
     // Ordenar
     filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number | Date = '';
+      let bValue: string | number | Date = '';
 
       switch (sortField) {
         case 'ticketNumber':
@@ -152,13 +151,9 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
           aValue = a.horaIngresoCorreo;
           bValue = b.horaIngresoCorreo;
           break;
-        case 'origenConsulta':
-          aValue = a.origenConsulta;
-          bValue = b.origenConsulta;
-          break;
-        case 'tipoSolicitud':
-          aValue = a.tipoSolicitud;
-          bValue = b.tipoSolicitud;
+        case 'baseOrigen':
+          aValue = a.baseOrigen;
+          bValue = b.baseOrigen;
           break;
         case 'motivo':
           aValue = a.motivo;
@@ -172,11 +167,12 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
           aValue = a.assignedTo || '';
           bValue = b.assignedTo || '';
           break;
-        case 'priority':
-          const priorityOrder = { 'critica': 4, 'alta': 3, 'media': 2, 'baja': 1 };
+        case 'priority': {
+          const priorityOrder = { critica: 4, alta: 3, media: 2, baja: 1 } as const;
           aValue = priorityOrder[a.priority as keyof typeof priorityOrder];
           bValue = priorityOrder[b.priority as keyof typeof priorityOrder];
           break;
+        }
         default:
           return 0;
       }
@@ -203,8 +199,7 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
           'Fecha Ingreso',
           'Hora Ingreso',
           'Tiempo Transcurrido',
-          'Origen',
-          'Tipo Claims',
+          'Base Origen',
           'Motivo',
           'Sub Motivo',
           'Asignado a',
@@ -219,8 +214,7 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
           new Date(req.initialDate).toLocaleDateString('es-AR'),
           req.horaIngresoCorreo,
           calculateTimeElapsed(req.horaIngresoCorreo, req.initialDate),
-          req.origenConsulta,
-          req.tipoSolicitud,
+          req.baseOrigen,
           req.motivo,
           req.subMotivo,
           req.assignedTo || 'Sin asignar',
@@ -338,21 +332,12 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
               </TableHead>
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-xs"
-                onClick={() => handleSort('origenConsulta')}
+                onClick={() => handleSort('baseOrigen')}
               >
                 <div className="flex items-center gap-1">
                   <Building2 className="h-3 w-3" />
-                  Origen
-                  {getSortIcon('origenConsulta')}
-                </div>
-              </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-xs"
-                onClick={() => handleSort('tipoSolicitud')}
-              >
-                <div className="flex items-center gap-1">
-                  Tipo
-                  {getSortIcon('tipoSolicitud')}
+                  Base Origen
+                  {getSortIcon('baseOrigen')}
                 </div>
               </TableHead>
               <TableHead 
@@ -438,20 +423,14 @@ const RequirementsTable: React.FC<RequirementsTableProps> = ({
                   <div className="flex items-center gap-1">
                     <Clock className="h-2 w-2 text-muted-foreground" />
                     <span className="font-mono">
-                      {requirement.status === 'cerrado' && requirement.resolvedAt
-                        ? calculateTimeElapsed(requirement.horaIngresoCorreo, requirement.initialDate)
-                        : calculateTimeElapsed(requirement.horaIngresoCorreo, requirement.initialDate)
-                      }
+                      {calculateTimeElapsed(requirement.horaIngresoCorreo, requirement.initialDate)}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={requirement.origenConsulta === 'AMADEUS' ? 'default' : 'secondary'} className="text-xs">
-                    {requirement.origenConsulta}
+                  <Badge variant="outline" className="text-xs font-mono">
+                    {requirement.baseOrigen}
                   </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-xs">{requirement.tipoSolicitud}</Badge>
                 </TableCell>
                 <TableCell className="text-xs">{requirement.motivo}</TableCell>
                 <TableCell className="text-xs">{requirement.subMotivo}</TableCell>

@@ -56,7 +56,7 @@ const DuplicateCaseModal = ({
               Casos Existentes Detectados
             </DialogTitle>
             <DialogDescription>
-              Se encontraron {duplicateCases.length} caso(s) existente(s) con el PNR/TKT/Localizador: 
+              Se encontraron {duplicateCases.length} caso(s) existente(s) con el Código de Reserva (PNR): 
               <span className="font-mono font-semibold text-primary ml-1">
                 {pnrTktLocalizador}
               </span>
@@ -79,7 +79,7 @@ const DuplicateCaseModal = ({
                           <RequirementPriorityBadge priority={requirement.priority} />
                         </div>
                         <CardTitle className="text-lg">
-                          {requirement.tipoSolicitud || 'Requerimiento GDS'}
+                          {requirement.motivo || 'Solicitud Voucher'}
                         </CardTitle>
                       </div>
                       <Button
@@ -215,12 +215,20 @@ const DuplicateCaseModal = ({
                 </div>
               </div>
 
-              {selectedCase.solicitudCliente && (
+              {typeof selectedCase.montoVoucherUsd === 'number' && (
                 <div>
-                  <h3 className="font-semibold mb-2">Solicitud del Cliente</h3>
-                  <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                    {selectedCase.solicitudCliente}
-                  </p>
+                  <h3 className="font-semibold mb-2">Información del Voucher</h3>
+                  <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md space-y-1">
+                    <p>
+                      <span className="font-medium">Monto:</span> {selectedCase.montoVoucherUsd} USD
+                    </p>
+                    {selectedCase.fechaEnvioVoucher && (
+                      <p>
+                        <span className="font-medium">Fecha de envío:</span>{' '}
+                        {new Date(selectedCase.fechaEnvioVoucher).toLocaleDateString('es-AR')}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 

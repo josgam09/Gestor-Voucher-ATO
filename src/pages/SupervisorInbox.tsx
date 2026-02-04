@@ -12,20 +12,20 @@ const SupervisorInbox = () => {
   const { user } = useAuth();
   const { requirements } = useRequirements();
 
-  // Filtrar casos escalados a supervisor
-  const escaladosASupervisor = useMemo(() => {
+  // Filtrar casos que requieren visto bueno del supervisor
+  const casosEnRevision = useMemo(() => {
     return requirements.filter((req) => {
-      return req.status === 'pendiente-supervisor';
+      return req.status === 'revision-supervisor';
     });
   }, [requirements]);
 
   // Estadísticas
   const stats = {
-    total: escaladosASupervisor.length,
-    criticos: escaladosASupervisor.filter(r => r.priority === 'critica').length,
-    altos: escaladosASupervisor.filter(r => r.priority === 'alta').length,
-    medios: escaladosASupervisor.filter(r => r.priority === 'media').length,
-    bajos: escaladosASupervisor.filter(r => r.priority === 'baja').length,
+    total: casosEnRevision.length,
+    criticos: casosEnRevision.filter(r => r.priority === 'critica').length,
+    altos: casosEnRevision.filter(r => r.priority === 'alta').length,
+    medios: casosEnRevision.filter(r => r.priority === 'media').length,
+    bajos: casosEnRevision.filter(r => r.priority === 'baja').length,
   };
 
   return (
@@ -35,7 +35,7 @@ const SupervisorInbox = () => {
         <div>
           <h1 className="text-3xl font-bold">Bandeja del Supervisor</h1>
           <p className="text-muted-foreground">
-            Casos escalados que requieren atención del supervisor
+            Casos enviados por Soporte CC para visto bueno
           </p>
         </div>
         <div className="flex gap-2">
@@ -58,7 +58,7 @@ const SupervisorInbox = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Escalados</CardTitle>
+            <CardTitle className="text-sm font-medium">Total en Revisión</CardTitle>
             <Inbox className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -127,32 +127,27 @@ const SupervisorInbox = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Inbox className="h-5 w-5" />
-            Casos Escalados al Supervisor
+            Casos en Revisión
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {escaladosASupervisor.length > 0 ? (
+          {casosEnRevision.length > 0 ? (
             <RequirementsTable 
-              requirements={escaladosASupervisor}
-              title="Bandeja Supervisor"
+              requirements={casosEnRevision}
+              title="Bandeja Supervisor (Revisión)"
               showFilters={true}
             />
           ) : (
             <div className="text-center py-12">
               <Inbox className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-semibold mb-2">No hay casos escalados</h3>
+              <h3 className="text-lg font-semibold mb-2">No hay casos en revisión</h3>
               <p className="text-muted-foreground mb-4">
-                No hay requerimientos pendientes de tu atención en este momento.
+                No hay requerimientos pendientes de visto bueno en este momento.
               </p>
               <div className="flex gap-2 justify-center">
                 <Link to="/requirements">
                   <Button variant="outline">
                     Ver Todos los Requerimientos
-                  </Button>
-                </Link>
-                <Link to="/requirements/new">
-                  <Button>
-                    Crear Nuevo Requerimiento
                   </Button>
                 </Link>
               </div>

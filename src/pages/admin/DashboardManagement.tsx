@@ -36,7 +36,7 @@ const availableWidgets: Widget[] = [
   { id: 'w4', name: 'Requerimientos Recientes', type: 'lista' },
   { id: 'w5', name: 'Tabla de Prioridades', type: 'tabla' },
   { id: 'w6', name: 'Métrica de SLA', type: 'metrica' },
-  { id: 'w7', name: 'Casos Escalados', type: 'lista' },
+  { id: 'w7', name: 'Casos en Revisión Supervisor', type: 'lista' },
   { id: 'w8', name: 'Productividad por Asesor', type: 'tabla' },
 ];
 
@@ -46,8 +46,8 @@ const DashboardManagement = () => {
   const [dashboards, setDashboards] = useState<CustomDashboard[]>([
     {
       id: '1',
-      name: 'Dashboard Analista',
-      role: 'ANALISTA',
+      name: 'Dashboard Aeropuerto (ATO)',
+      role: 'AEROPUERTO_ATO',
       widgets: [
         { id: 'w1', name: 'Estadísticas Generales', type: 'estadisticas' },
         { id: 'w4', name: 'Requerimientos Recientes', type: 'lista' },
@@ -59,7 +59,7 @@ const DashboardManagement = () => {
 
   const [newDashboard, setNewDashboard] = useState({
     name: '',
-    role: 'ANALISTA' as UserRole,
+    role: 'AEROPUERTO_ATO' as UserRole,
   });
 
   const [selectedWidgets, setSelectedWidgets] = useState<string[]>([]);
@@ -81,7 +81,7 @@ const DashboardManagement = () => {
     };
 
     setDashboards([...dashboards, dashboard]);
-    setNewDashboard({ name: '', role: 'ANALISTA' });
+    setNewDashboard({ name: '', role: 'AEROPUERTO_ATO' });
     setSelectedWidgets([]);
     toast.success(`Dashboard "${dashboard.name}" creado exitosamente`);
   };
@@ -114,7 +114,8 @@ const DashboardManagement = () => {
     switch (role) {
       case 'ADMINISTRADOR': return 'bg-red-500/10 text-red-600';
       case 'SUPERVISOR': return 'bg-blue-500/10 text-blue-600';
-      case 'ANALISTA': return 'bg-green-500/10 text-green-600';
+      case 'AEROPUERTO_ATO': return 'bg-emerald-500/10 text-emerald-600';
+      case 'SOPORTE_CC': return 'bg-violet-500/10 text-violet-600';
     }
   };
 
@@ -175,7 +176,8 @@ const DashboardManagement = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ANALISTA">Analista</SelectItem>
+                    <SelectItem value="AEROPUERTO_ATO">Aeropuerto (ATO)</SelectItem>
+                    <SelectItem value="SOPORTE_CC">Soporte CC</SelectItem>
                     <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
                     <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
                   </SelectContent>

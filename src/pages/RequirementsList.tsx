@@ -24,7 +24,7 @@ import {
 import RequirementStatusBadge from '@/components/RequirementStatusBadge';
 import RequirementPriorityBadge from '@/components/RequirementPriorityBadge';
 import { Plus, Home, Download, Filter, Calendar as CalendarIcon, ChevronDown, ChevronUp, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { RequirementStatus, RequirementPriority, OrigenConsulta, TipoSolicitud, Pais, AsesorName } from '@/types/requirement';
+import { RequirementStatus, RequirementPriority, BaseOrigen, Pais, AsesorName } from '@/types/requirement';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -43,9 +43,12 @@ const ASESORES: AsesorName[] = [
 ];
 
 const RequirementsList = () => {
-  const { requirements } = useRequirements();
+  const { requirements, updateRequirement } = useRequirements();
   const { user, hasRole } = useAuth();
   const navigate = useNavigate();
+
+  // Soporte CC: fecha de envío para acción masiva
+  const [fechaEnvioMasivo, setFechaEnvioMasivo] = useState(''); // yyyy-mm-dd
   
   // Estados para filtros - La fecha es el filtro principal
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -56,8 +59,7 @@ const RequirementsList = () => {
   const [assignedToFilter, setAssignedToFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<RequirementStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<RequirementPriority | 'all'>('all');
-  const [origenFilter, setOrigenFilter] = useState<OrigenConsulta | 'all'>('all');
-  const [tipoSolicitudFilter, setTipoSolicitudFilter] = useState<TipoSolicitud | 'all'>('all');
+  const [origenFilter, setOrigenFilter] = useState<BaseOrigen | 'all'>('all');
   const [motivoFilter, setMotivoFilter] = useState<string>('all');
   
   // Estados de ordenamiento
@@ -73,7 +75,6 @@ const RequirementsList = () => {
     statusFilter !== 'all',
     priorityFilter !== 'all',
     origenFilter !== 'all',
-    tipoSolicitudFilter !== 'all',
     motivoFilter !== 'all',
   ].filter(Boolean).length;
 
@@ -87,7 +88,6 @@ const RequirementsList = () => {
     setStatusFilter('all');
     setPriorityFilter('all');
     setOrigenFilter('all');
-    setTipoSolicitudFilter('all');
     setMotivoFilter('all');
     toast.success('Filtros limpiados');
   };
@@ -96,9 +96,9 @@ const RequirementsList = () => {
   const dateFilteredRequirements = useMemo(() => {
     let requirementsToShow = requirements;
 
-    // Si es analista, solo mostrar casos asignados a él
-    if (hasRole(['ANALISTA']) && user) {
-      requirementsToShow = requirements.filter(req => req.assignedTo === user.name);
+    // Aeropuerto (ATO): solo ver requerimientos creados por el mismo usuario
+    if (hasRole(['AEROPUERTO_ATO']) && user) {
+      requirementsToShow = requirements.filter(req => req.nombreAsesor === user.name);
     }
 
     // Aplicar filtro de fecha primero
@@ -170,17 +170,16 @@ const RequirementsList = () => {
         (assignedToFilter === 'sin-asignar' ? !req.assignedTo : req.assignedTo === assignedToFilter);
       const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
       const matchesPriority = priorityFilter === 'all' || req.priority === priorityFilter;
-      const matchesOrigen = origenFilter === 'all' || req.origenConsulta === origenFilter;
-      const matchesTipoSolicitud = tipoSolicitudFilter === 'all' || req.tipoSolicitud === tipoSolicitudFilter;
+      const matchesOrigen = origenFilter === 'all' || req.baseOrigen === origenFilter;
       const matchesMotivo = motivoFilter === 'all' || req.motivo === motivoFilter;
 
-      return matchesSearch && matchesCountry && matchesAssignedTo && matchesStatus && matchesPriority && matchesOrigen && matchesTipoSolicitud && matchesMotivo;
+      return matchesSearch && matchesCountry && matchesAssignedTo && matchesStatus && matchesPriority && matchesOrigen && matchesMotivo;
     });
 
     // Aplicar ordenamiento
     return filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number = '';
+      let bValue: string | number = '';
 
       switch (sortColumn) {
         case 'ticketNumber':
@@ -199,13 +198,9 @@ const RequirementsList = () => {
           aValue = a.status;
           bValue = b.status;
           break;
-        case 'origenConsulta':
-          aValue = a.origenConsulta;
-          bValue = b.origenConsulta;
-          break;
-        case 'tipoSolicitud':
-          aValue = a.tipoSolicitud;
-          bValue = b.tipoSolicitud;
+        case 'baseOrigen':
+          aValue = a.baseOrigen;
+          bValue = b.baseOrigen;
           break;
         case 'motivo':
           aValue = a.motivo || '';
@@ -216,25 +211,25 @@ const RequirementsList = () => {
           bValue = b.assignedTo || '';
           break;
         default:
-          aValue = a.createdAt;
-          bValue = b.createdAt;
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
       }
 
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [dateFilteredRequirements, search, countryFilter, assignedToFilter, statusFilter, priorityFilter, origenFilter, tipoSolicitudFilter, motivoFilter, sortColumn, sortDirection]);
+  }, [dateFilteredRequirements, search, countryFilter, assignedToFilter, statusFilter, priorityFilter, origenFilter, motivoFilter, sortColumn, sortDirection]);
 
   const exportToCSV = () => {
-    const headers = ['Ticket', 'País', 'Origen', 'Tipo', 'PNR/TKT', 'Estado', 'Prioridad', 'Asignado a', 'Motivo', 'Fecha Creación'];
+    const headers = ['Ticket', 'País', 'Base Origen', 'PNR', 'Estado', 'Fecha Envío', 'Prioridad', 'Asignado a', 'Motivo', 'Fecha Creación'];
     const rows = filteredRequirements.map(req => [
       req.ticketNumber,
       req.pais,
-      req.origenConsulta,
-      req.tipoSolicitud,
+      req.baseOrigen,
       req.pnrTktLocalizador,
       req.status,
+      req.fechaEnvioVoucher ? new Date(req.fechaEnvioVoucher).toLocaleDateString('es-AR') : '',
       req.priority,
       req.assignedTo || '',
       req.motivo || '',
@@ -258,6 +253,106 @@ const RequirementsList = () => {
 
     toast.success('Archivo CSV descargado exitosamente');
   };
+
+  // Soporte CC: descargar base "Ingresado" y marcar "En Gestión"
+  const exportIngresadosAndMarkEnGestion = () => {
+    const ingresados = filteredRequirements.filter(r => r.status === 'ingresado');
+
+    const headers = ['Ticket', 'País', 'Base Origen', 'PNR', 'Estado', 'Prioridad', 'Motivo', 'Fecha Creación'];
+    const rows = ingresados.map(req => [
+      req.ticketNumber,
+      req.pais,
+      req.baseOrigen,
+      req.pnrTktLocalizador,
+      req.status,
+      req.priority,
+      req.motivo || '',
+      new Date(req.createdAt).toLocaleString('es-AR'),
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `requerimientos_ingresados_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Marcar como "En Gestión" automáticamente al descargar (masivo)
+    ingresados.forEach(req => {
+      updateRequirement(req.id, {
+        status: 'en-gestion',
+        assignedTeam: 'Soporte CC',
+        assignedTo: user?.name || 'Soporte CC',
+        history: [
+          ...req.history,
+          {
+            id: Date.now().toString(),
+            date: new Date(),
+            action: 'Caso en gestión (masivo)',
+            user: user?.name || 'Soporte CC',
+            comment: 'Cambio automático al descargar base de casos ingresados',
+          },
+        ],
+      });
+    });
+
+    toast.success(`Base descargada: ${ingresados.length} casos. Estado actualizado a "En Gestión".`);
+  };
+
+  // Soporte CC: marcar como ENVIADO (masivo) los casos "En Gestión" del set filtrado
+  const markEnviadosMasivo = () => {
+    if (!fechaEnvioMasivo) {
+      toast.error('Por favor ingresa la fecha de envío para el cambio masivo');
+      return;
+    }
+
+    const enGestion = filteredRequirements.filter(r => r.status === 'en-gestion');
+    if (enGestion.length === 0) {
+      toast.error('No hay casos en estado "En Gestión" en el listado actual');
+      return;
+    }
+
+    enGestion.forEach(req => {
+      updateRequirement(req.id, {
+        status: 'enviado',
+        fechaEnvioVoucher: new Date(`${fechaEnvioMasivo}T00:00:00`),
+        resolvedAt: new Date(`${fechaEnvioMasivo}T00:00:00`),
+        assignedTeam: 'Soporte CC',
+        assignedTo: user?.name || 'Soporte CC',
+        history: [
+          ...req.history,
+          {
+            id: Date.now().toString(),
+            date: new Date(),
+            action: 'Caso Cerrado por envío de Voucher por Parte de Soporte CC',
+            user: user?.name || 'Soporte CC',
+            comment: `Fecha de envío: ${fechaEnvioMasivo}`,
+          },
+        ],
+      });
+    });
+
+    toast.success(`Cambio masivo aplicado: ${enGestion.length} casos marcados como ENVIADO.`);
+  };
+
+  // Obtener bases únicas para el filtro (dependiente de país)
+  const uniqueBases = useMemo(() => {
+    const relevant = countryFilter === 'all'
+      ? dateFilteredRequirements
+      : dateFilteredRequirements.filter(r => r.pais === countryFilter);
+
+    return Array.from(
+      new Set(relevant.map(r => r.baseOrigen).filter(Boolean))
+    ).sort();
+  }, [dateFilteredRequirements, countryFilter]);
 
   // Obtener motivos únicos para el filtro
   const uniqueMotivos = useMemo(() => {
@@ -287,7 +382,28 @@ const RequirementsList = () => {
             <Download className="h-4 w-4" />
             Exportar CSV
           </Button>
-          {hasRole(['ADMINISTRADOR', 'SUPERVISOR']) && (
+          {hasRole(['SOPORTE_CC']) && (
+            <>
+              <Button onClick={exportIngresadosAndMarkEnGestion} variant="default" className="gap-2">
+                <Download className="h-4 w-4" />
+                Descargar base (Ingresado)
+              </Button>
+
+              <div className="hidden md:flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={fechaEnvioMasivo}
+                  onChange={(e) => setFechaEnvioMasivo(e.target.value)}
+                  className="h-10 w-[160px]"
+                  aria-label="Fecha de envío masivo"
+                />
+                <Button onClick={markEnviadosMasivo} variant="secondary" className="gap-2">
+                  Marcar ENVIADO (En Gestión)
+                </Button>
+              </div>
+            </>
+          )}
+          {hasRole(['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO']) && (
           <Link to="/requirements/new">
             <Button size="lg" className="gap-2">
               <Plus className="h-5 w-5" />
@@ -307,7 +423,7 @@ const RequirementsList = () => {
             <div>
               <Label htmlFor="dateFilter" className="text-xs font-medium mb-1.5 block">Periodo</Label>
               <Select value={dateFilter} onValueChange={(value) => {
-                setDateFilter(value as any);
+                setDateFilter(value as 'all' | 'today' | 'week' | 'month' | 'year' | 'custom');
                 if (value !== 'custom') setDateRange(undefined);
               }}>
                 <SelectTrigger id="dateFilter" className="h-9">
@@ -345,14 +461,10 @@ const RequirementsList = () => {
               </SelectTrigger>
               <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="nuevo">Nuevo</SelectItem>
-                  <SelectItem value="en-proceso">En Proceso</SelectItem>
-                  <SelectItem value="pendiente-informacion">Pendiente Info</SelectItem>
-                  <SelectItem value="pendiente-supervisor">Pendiente Supervisor</SelectItem>
-                  <SelectItem value="pendiente-otra-area">Pendiente Otra Área</SelectItem>
-                  <SelectItem value="pendiente-agencia">Pendiente Agencia</SelectItem>
-                  <SelectItem value="resuelto">Resuelto</SelectItem>
-                  <SelectItem value="cerrado">Cerrado</SelectItem>
+                <SelectItem value="ingresado">Ingresado</SelectItem>
+                <SelectItem value="en-gestion">En Gestión</SelectItem>
+                <SelectItem value="revision-supervisor">Revisión Supervisor</SelectItem>
+                <SelectItem value="enviado">Enviado</SelectItem>
               </SelectContent>
             </Select>
             </div>
@@ -456,42 +568,28 @@ const RequirementsList = () => {
                       <SelectItem value="CL">🇨🇱 Chile</SelectItem>
                       <SelectItem value="CO">🇨🇴 Colombia</SelectItem>
                       <SelectItem value="EC">🇪🇨 Ecuador</SelectItem>
+                      <SelectItem value="DO">🇩🇴 República Dominicana</SelectItem>
                       <SelectItem value="PY">🇵🇾 Paraguay</SelectItem>
                       <SelectItem value="PE">🇵🇪 Perú</SelectItem>
-                      <SelectItem value="RD">🇩🇴 RD</SelectItem>
                       <SelectItem value="UY">🇺🇾 Uruguay</SelectItem>
-                      <SelectItem value="US">🇺🇸 Estados Unidos</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Origen */}
+                {/* Base Origen */}
                 <div>
-                  <Label htmlFor="origenFilter" className="text-xs font-medium mb-1.5 block">Origen</Label>
-                  <Select value={origenFilter} onValueChange={(value) => setOrigenFilter(value as OrigenConsulta | 'all')}>
+                  <Label htmlFor="origenFilter" className="text-xs font-medium mb-1.5 block">Base Origen</Label>
+                  <Select value={origenFilter} onValueChange={(value) => setOrigenFilter(value as BaseOrigen | 'all')}>
                     <SelectTrigger id="origenFilter" className="h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="AMADEUS">AMADEUS</SelectItem>
-                      <SelectItem value="SABRE">SABRE</SelectItem>
-                      <SelectItem value="NO CORRESPONDE">NO CORRESPONDE</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Tipo de Solicitud */}
-                <div>
-                  <Label htmlFor="tipoSolicitudFilter" className="text-xs font-medium mb-1.5 block">Tipo</Label>
-                  <Select value={tipoSolicitudFilter} onValueChange={(value) => setTipoSolicitudFilter(value as TipoSolicitud | 'all')}>
-                    <SelectTrigger id="tipoSolicitudFilter" className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="Solicitudes">Solicitudes</SelectItem>
-                      <SelectItem value="Reclamos">Reclamos</SelectItem>
+                      {uniqueBases.map((base) => (
+                        <SelectItem key={base} value={base}>
+                          {base}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -582,11 +680,14 @@ const RequirementsList = () => {
                         {sortColumn !== 'status' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
                       </Button>
                     </TableHead>
+                  <TableHead className="py-2 text-xs font-semibold">
+                    Fecha Envío
+                  </TableHead>
                     <TableHead className="py-2">
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent whitespace-normal text-left" onClick={() => handleSort('origenConsulta')}>
-                        Origen
-                        {sortColumn === 'origenConsulta' && (sortDirection === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />)}
-                        {sortColumn !== 'origenConsulta' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent whitespace-normal text-left" onClick={() => handleSort('baseOrigen')}>
+                        Base Origen
+                        {sortColumn === 'baseOrigen' && (sortDirection === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />)}
+                        {sortColumn !== 'baseOrigen' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
                       </Button>
                     </TableHead>
                     <TableHead className="py-2">
@@ -628,7 +729,12 @@ const RequirementsList = () => {
                         <RequirementStatusBadge status={req.status} />
                       </TableCell>
                       <TableCell className="py-2">
-                        <span className="text-xs">{req.origenConsulta}</span>
+                        <span className="text-xs">
+                          {req.fechaEnvioVoucher ? new Date(req.fechaEnvioVoucher).toLocaleDateString('es-AR') : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono">{req.baseOrigen}</span>
                       </TableCell>
                       <TableCell className="py-2">
                         <span className="text-xs">{req.motivo || '-'}</span>

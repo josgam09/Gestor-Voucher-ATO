@@ -1,192 +1,172 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useRequirements } from '@/contexts/RequirementContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+
 import { ArrowLeft, Clock, Mail, User, Globe, FileText, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import ScriptSelector from '@/components/ScriptSelector';
 import DuplicateCaseModal from '@/components/DuplicateCaseModal';
-import { getApplicableScripts, ResponseScript } from '@/data/responseScripts';
-import { Requirement } from '@/types/requirement';
+import { Requirement, RequirementStatus } from '@/types/requirement';
 import { 
   Pais, 
-  OrigenConsulta, 
-  TipoSolicitud,
-  MotivoSolicitud,
-  MotivoReclamo,
-  CasoOpcion,
-  AreaEscalamiento
+  BaseOrigen,
+  VueloOperadoPor
 } from '@/types/requirement';
 
 const RequirementFormNew = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addRequirement, requirements, findDuplicateCases } = useRequirements();
+  const { addRequirement, updateRequirement, getRequirement, requirements, findDuplicateCases } = useRequirements();
+  const { user, hasRole } = useAuth();
 
   // Estados para casos duplicados
   const [duplicateCases, setDuplicateCases] = useState<Requirement[]>([]);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [pendingSubmission, setPendingSubmission] = useState(false);
 
-  // Generar número único del ticket
+  const isEditing = !!id;
+  const existingRequirement = isEditing && id ? getRequirement(id) : undefined;
+
+  // Generar número único del ticket (solo para nuevos)
   const generateTicketNumber = () => {
     const year = new Date().getFullYear();
     const nextNumber = requirements.length + 1;
     return `VO_ATO-${year}-${String(nextNumber).padStart(3, '0')}`;
   };
 
-  const ticketNumber = generateTicketNumber();
+  const ticketNumber = existingRequirement?.ticketNumber || generateTicketNumber();
 
   // Sección 1: Información Personal de Aeropuerto
   const [nombreSolicitante, setNombreSolicitante] = useState('');
-  const [fechaHoraIngresoSolicitud] = useState<Date>(() => new Date());
+  const [fechaHoraIngresoSolicitud, setFechaHoraIngresoSolicitud] = useState<Date>(() => new Date());
   const [correoSolicitante, setCorreoSolicitante] = useState('');
 
-  // Sección 2: Origen de Consulta
+  // Aeropuerto (ATO): sugerir datos del usuario (pero editable)
+  useEffect(() => {
+    if (user?.role !== 'AEROPUERTO_ATO') return;
+    if (isEditing) return;
+
+    // Solo sugerir si aún no se ha escrito nada (evita sobreescribir)
+    if (!nombreSolicitante.trim()) setNombreSolicitante(user.name);
+    if (!correoSolicitante.trim()) setCorreoSolicitante(user.email);
+  }, [user, isEditing, nombreSolicitante, correoSolicitante]);
+
+  // Si es edición, precargar datos
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!existingRequirement) {
+      toast.error('Requerimiento no encontrado');
+      navigate('/requirements');
+      return;
+    }
+
+    // Permisos de edición:
+    // - ATO: solo puede editar SUS casos si están en estado "ingresado"
+    // - Supervisor/Admin: pueden editar
+    if (user?.role === 'AEROPUERTO_ATO') {
+      const isOwner = existingRequirement.nombreAsesor === user.name;
+      const canEditNow = existingRequirement.status === 'ingresado';
+      if (!isOwner || !canEditNow) {
+        toast.error('No tienes permisos para editar este requerimiento (solo tus casos en estado Ingresado).');
+        navigate(`/requirements/${existingRequirement.id}`);
+        return;
+      }
+    } else if (!hasRole(['SUPERVISOR', 'ADMINISTRADOR'])) {
+      toast.error('No tienes permisos para editar este requerimiento.');
+      navigate(`/requirements/${existingRequirement.id}`);
+      return;
+    }
+
+    setNombreSolicitante(existingRequirement.nombreAsesor || '');
+    setCorreoSolicitante(existingRequirement.correoElectronico || '');
+    setPais((existingRequirement.pais as Pais) || '');
+    setBaseOrigen((existingRequirement.baseOrigen as BaseOrigen) || '');
+    setPnrTktLocalizador(existingRequirement.pnrTktLocalizador || '');
+
+    setPasajeroNombreApellido(existingRequirement.pasajeroNombreApellido || '');
+    setPasajeroDocumento(existingRequirement.pasajeroDocumento || '');
+    setPasajeroCorreo(existingRequirement.pasajeroCorreo || '');
+    setFechaVuelo(existingRequirement.fechaVuelo ? new Date(existingRequirement.fechaVuelo).toISOString().slice(0, 10) : '');
+    setNumeroVuelo(existingRequirement.numeroVuelo || '');
+    setTramoVuelo(existingRequirement.tramoVuelo || '');
+    setVueloOperadoPor((existingRequirement.vueloOperadoPor as VueloOperadoPor) || '');
+
+    setMotivo(existingRequirement.motivo || '');
+    setSubMotivo(existingRequirement.subMotivo || '');
+    setComentariosAdicionales(existingRequirement.comentariosAdicionales || '');
+
+    setMontoVoucherUsd(
+      typeof existingRequirement.montoVoucherUsd === 'number'
+        ? String(existingRequirement.montoVoucherUsd)
+        : ''
+    );
+
+    // Mantener fecha/hora de ingreso (solo lectura)
+    setFechaHoraIngresoSolicitud(existingRequirement.createdAt ? new Date(existingRequirement.createdAt) : new Date());
+  }, [isEditing, existingRequirement, user, hasRole, navigate]);
+
+  // Sección 2: Origen de la Solicitud
   const [pais, setPais] = useState<Pais | ''>('');
-  const [origenConsulta, setOrigenConsulta] = useState<OrigenConsulta | ''>('');
-  const [esSoporteIngles, setEsSoporteIngles] = useState('No');
+  const [baseOrigen, setBaseOrigen] = useState<BaseOrigen | ''>('');
 
-  // Sección 3: Datos del Cliente
+  // Sección 3: Datos del Pasajero y Vuelo
   const [pnrTktLocalizador, setPnrTktLocalizador] = useState('');
+  const [pasajeroNombreApellido, setPasajeroNombreApellido] = useState('');
+  const [pasajeroDocumento, setPasajeroDocumento] = useState('');
+  const [pasajeroCorreo, setPasajeroCorreo] = useState('');
+  const [fechaVuelo, setFechaVuelo] = useState(''); // yyyy-mm-dd
+  const [numeroVuelo, setNumeroVuelo] = useState('');
+  const [tramoVuelo, setTramoVuelo] = useState('');
+  const [vueloOperadoPor, setVueloOperadoPor] = useState<VueloOperadoPor | ''>('');
 
-  // Sección 4: Clasificación
-  const [tipoSolicitud, setTipoSolicitud] = useState<TipoSolicitud | ''>('');
+  // Sección 4: Motivo y Sub Motivo de la Solicitud de Voucher
   const [motivo, setMotivo] = useState('');
   const [subMotivo, setSubMotivo] = useState('');
-  const [subMotivoOtros, setSubMotivoOtros] = useState('');
+
+  // Sección 5: Información del Voucher
+  const [montoVoucherUsd, setMontoVoucherUsd] = useState(''); // input numérico (string)
 
   // Campos adicionales
-  const [solicitudCliente, setSolicitudCliente] = useState('');
-  const [casoOpcion, setCasoOpcion] = useState<CasoOpcion>('SI_CERRAR_CASO');
-  const [escaladoA, setEscaladoA] = useState('');
-  const [areaEscalamiento, setAreaEscalamiento] = useState<AreaEscalamiento | ''>('');
-  const [analisisAnalista, setAnalisisAnalista] = useState('');
-  const [informacionBrindada, setInformacionBrindada] = useState('');
-  const [observaciones, setObservaciones] = useState('');
-  const [availableScripts, setAvailableScripts] = useState<ResponseScript[]>([]);
+  const [comentariosAdicionales, setComentariosAdicionales] = useState('');
 
   // Listas de opciones
-  const paises: Pais[] = ['AR', 'BR', 'CL', 'CO', 'EC', 'PE', 'PY', 'RD', 'UY', 'US'];
+  const paises: Pais[] = ['AR', 'BR', 'CL', 'CO', 'DO', 'EC', 'PE', 'PY', 'UY'];
 
-  const origenes: OrigenConsulta[] = ['AMADEUS', 'SABRE', 'NO CORRESPONDE'];
-
-  const motivosSolicitud: MotivoSolicitud[] = [
-    'Cambio de Status', 'Certificado Médico', 'Cambio de Nombre', 'Facturación',
-    'Opcionales – Bundles', 'Política Comercial', 'Remisiones', 'Devoluciones',
-    'Pagos', 'Check-In'
-  ];
-
-  const motivosReclamo: MotivoReclamo[] = [
-    'Distribución', 'Devoluciones', 'Check-In', 'Alternativas', 'BSP'
-  ];
-
-  // Motivos específicos para cuando el origen es "NO CORRESPONDE"
-  const motivosNoCorresponde = ['GRUPOS', 'AGENCIAS API', 'CLIENTES SITIO WEB'];
-
-  // Áreas específicas para escalamiento
-  const areasEscalamiento: AreaEscalamiento[] = [
-    'Cobros Ato', 'Sobreventa', 'Medios de pago', 'Facturación', 'Finanzas',
-    'Área Comercial', 'Ventas', 'Área legal', 'Distribución'
-  ];
-
-  // Función para obtener sub motivos según el motivo seleccionado
-  const getSubMotivos = () => {
-    if (!motivo) return [];
-
-    // Si el origen es "NO CORRESPONDE", los motivos no tienen sub-motivos
-    if (origenConsulta === 'NO CORRESPONDE') {
-      return [];
-    }
-
-    switch (motivo) {
-      case 'Cambio de Status':
-        return origenConsulta === 'SABRE' 
-          ? [
-              'OPEN - Unused', 'USED - Lifted/boarded', 'VOID - Transaction voided',
-              'PRTD - Flight coupons printed', 'EXCH - Exchanged/reissued', 'RFND - Refunded',
-              'CKIN - Checked in', 'CTRL - Under airport control', 'ACTL - Under airport control',
-              'SUSP - Suspended by carrier', 'OK - Okay for travel', 'REAC - Reactivated',
-              '**** - Unavailable for changes', 'TKT - Ticketed', 'IREG - Irregular Operations'
-            ]
-          : [
-              'O - Open for Use', 'A - Airport Control', 'C - Checked-in', 'L - Lifted / Used',
-              'F - Flown', 'R - Refunded', 'E - Exchanged / Reissued', 'V - Voided',
-              'S - Suspended', 'P - Printed', 'I - Irregular / Involuntary Exchange',
-              'N - No-show', 'Z - Cancelled', 'T - Ticketed'
-            ];
-      
-      case 'Certificado Médico':
-        return ['Políticas', 'Exoneración', 'Excepciones'];
-      
-      case 'Cambio de Nombre':
-        return ['Cambio de nombre', 'Error tipográfico', 'Ley Cesión'];
-      
-      case 'Facturación':
-        return ['Bsp Paraguay', 'Aeropuerto', 'compras post-booking'];
-      
-      case 'Opcionales – Bundles':
-        return ['Cotización Post-booking', 'Compra Post-booking', 'Confirmación bundles', 'Familias tarifarias'];
-      
-      case 'Política Comercial':
-        return ['Equipajes', 'Penalidades', 'ADMs', 'ACMs', 'Vuelos afectados', 'Devoluciones', 'Medios de pago', 'Emisiónes'];
-      
-      case 'Remisiones':
-        return ['Voluntarias', 'Involuntarias', 'Excepciones - Exoneración de penalidad', 'Excepciones - Cambio sin costo'];
-      
-      case 'Devoluciones':
-        return tipoSolicitud === 'Solicitudes' 
-          ? ['Afectación', 'Excepciones Comerciales', 'ACMs', 'Tarifa reembolsable (BR G2)', 'Enfermedad', 'Defunción', 'Retracto']
-          : ['Vuelo afectado', 'Estados de devolución', 'Comprobantes', 'Cobros de ATO'];
-      
-      case 'Pagos':
-        return ['Links de pago', 'Navitaire AR', 'Monedero'];
-      
-      case 'Check-In':
-        return tipoSolicitud === 'Solicitudes'
-          ? ['Tiempos para realizar Check-in', 'Cambio de fecha de nacimiento CHD', 'Agregar infante']
-          : ['Error sitio web', 'PNRS multisegmentos', 'OVBK'];
-      
-      case 'Distribución':
-        return ['Actualización en Inventario', 'Issue Emisión', 'Políticas', 'Segmentos no Confirmados (HX, UC, NO)', 'Control Ato', 'Tiquete no sincronizado', 'Otros'];
-      
-      case 'Alternativas':
-        return ['Afectación - Operacional', 'Afectación - Comercial', 'Sobreventa', 'Cancelación - Operacional', 'Cancelación - Comercial'];
-      
-      case 'BSP':
-        return ['Pago Duplicado', 'Pago sin emisión de tiquete'];
-      
-      default:
-        return [];
-    }
+  const basesPorPais: Record<Pais, BaseOrigen[]> = {
+    AR: ['EZE', 'AEP', 'CRD', 'COR', 'FTE', 'MDZ', 'NQN', 'RES', 'SLA', 'BRC', 'CPC', 'TUC', 'REL', 'IGR', 'USH'],
+    BR: ['GIG', 'GRU', 'FLN', 'IGU', 'NAT', 'REC'],
+    CL: ['SCL', 'ANF', 'ARI', 'BBA', 'CJC', 'CCP', 'IQQ', 'LSC', 'PMC', 'ZCO'],
+    CO: ['BAQ', 'BOG', 'CLO', 'CTG', 'CUC', 'MDE', 'MTR', 'PEI', 'ADZ', 'SMR'],
+    DO: ['PUJ'],
+    EC: ['UIO'],
+    PE: ['LIM', 'AQP', 'CJA', 'CIX', 'CUZ', 'PIU', 'TPP', 'TRU'],
+    PY: ['ASU'],
+    UY: ['MVD'],
   };
 
-  // Resetear motivo y sub motivo cuando cambia el origen o tipo de solicitud
+  const motivosVoucher = ['OVBK Operacional', 'OVBK Comercial'] as const;
+  const subMotivosVoucher = ['Voluntario', 'Involuntario'] as const;
+
+  // Resetear sub motivo cuando cambia el motivo
   useEffect(() => {
-    setMotivo('');
     setSubMotivo('');
-    setSubMotivoOtros('');
-  }, [origenConsulta, tipoSolicitud]);
-
-  // Función para verificar casos duplicados
-  const checkForDuplicates = (pnrValue: string) => {
-    if (pnrValue && pnrValue.trim() !== '') {
-      const duplicates = findDuplicateCases(pnrValue);
-      setDuplicateCases(duplicates);
-    } else {
-      setDuplicateCases([]);
-    }
-  };
+  }, [motivo]);
 
   // Verificar duplicados cuando cambie el PNR
   useEffect(() => {
-    checkForDuplicates(pnrTktLocalizador);
-  }, [pnrTktLocalizador]);
+    if (pnrTktLocalizador && pnrTktLocalizador.trim() !== '') {
+      setDuplicateCases(findDuplicateCases(pnrTktLocalizador));
+      return;
+    }
+    setDuplicateCases([]);
+  }, [pnrTktLocalizador, findDuplicateCases]);
 
   // Función para continuar con la creación del caso
   const continueWithCreation = () => {
@@ -199,11 +179,6 @@ const RequirementFormNew = () => {
         form.requestSubmit();
       }
     }, 100);
-  };
-
-  const handleApplyScript = (scriptContent: string) => {
-    setInformacionBrindada(scriptContent);
-    toast.success('Script aplicado. Revisa y ajusta según necesites.');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -232,108 +207,95 @@ const RequirementFormNew = () => {
     }
 
     const now = new Date();
-    const horaIngresoSolicitud = now.toTimeString().slice(0, 5); // HH:MM
+    const horaIngresoSolicitud = isEditing && existingRequirement
+      ? existingRequirement.horaIngresoCorreo
+      : now.toTimeString().slice(0, 5); // HH:MM
+    const initialDateFinal = isEditing && existingRequirement ? existingRequirement.initialDate : now;
 
-    if (!pais || !origenConsulta) {
+    if (!pais || !baseOrigen) {
       toast.error('Por favor complete todos los campos de la Sección 2');
       return;
     }
 
     if (!pnrTktLocalizador) {
-      toast.error('Por favor complete el campo PNR/TKT/Localizador');
+      toast.error('Por favor complete el campo Código de Reserva (PNR)');
       return;
     }
 
-    if (!tipoSolicitud || !motivo) {
+    const pnr = pnrTktLocalizador.trim().toUpperCase();
+    const isValidPNR = /^[A-Z][A-Z0-9]{4}[A-Z]$/.test(pnr);
+    if (!isValidPNR) {
+      toast.error('El Código de Reserva (PNR) debe ser alfanumérico de 6 caracteres, comenzar y terminar con una letra.');
+      return;
+    }
+
+    if (!pasajeroNombreApellido.trim() || !pasajeroDocumento.trim() || !pasajeroCorreo.trim()) {
+      toast.error('Por favor complete todos los campos de Datos del Pasajero');
+      return;
+    }
+
+    const passengerEmail = pasajeroCorreo.trim();
+    const isValidPassengerEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(passengerEmail);
+    if (!isValidPassengerEmail) {
+      toast.error('Ingrese un correo electrónico del pasajero válido');
+      return;
+    }
+
+    if (!fechaVuelo || !numeroVuelo.trim() || !tramoVuelo.trim() || !vueloOperadoPor) {
+      toast.error('Por favor complete todos los campos de Datos del Vuelo');
+      return;
+    }
+
+    if (!motivo || !subMotivo) {
       toast.error('Por favor complete todos los campos de la Sección 4');
       return;
     }
 
-    // El sub-motivo solo es requerido si el origen NO es "NO CORRESPONDE"
-    if (origenConsulta !== 'NO CORRESPONDE' && !subMotivo) {
-      toast.error('Por favor complete todos los campos de la Sección 4');
+    const montoParsed = Number(String(montoVoucherUsd).replace(',', '.'));
+    const isValidMonto = Number.isFinite(montoParsed) && montoParsed > 0;
+    if (!isValidMonto) {
+      toast.error('Por favor ingrese un Monto del Voucher (USD) válido (mayor que 0)');
       return;
     }
 
-    if (!solicitudCliente) {
-      toast.error('Por favor describa la solicitud del cliente');
-      return;
-    }
+    // Flujo Multi-Rol:
+    // - Nuevo: estado "Ingresado"
+    // - Edición: mantener estado actual
+    const estadoFinal: RequirementStatus = isEditing && existingRequirement ? existingRequirement.status : 'ingresado';
 
-    // Validar según la opción seleccionada
-    if (casoOpcion === 'SI_CERRAR_CASO') {
-      if (!informacionBrindada.trim()) {
-        toast.error('Por favor proporciona la información brindada al cliente antes de crear y cerrar el caso');
-        return;
-      }
-    }
-
-    if (casoOpcion === 'NO_ESCALAR_CASO') {
-      if (!escaladoA) {
-        toast.error('Por favor selecciona a quién escalar el caso');
-        return;
-      }
-      if (escaladoA === 'SUPERVISOR' && !analisisAnalista.trim()) {
-        toast.error('Por favor proporciona tu análisis y motivo del escalamiento al supervisor');
-        return;
-      }
-      if (escaladoA === 'OTRA_AREA' && !areaEscalamiento) {
-        toast.error('Por favor selecciona el área a escalar');
-        return;
-      }
-    }
-
-
-    // Determinar el estado según la opción seleccionada
-    let estadoInicial: any = 'nuevo';
-    
-    if (casoOpcion === 'SI_CERRAR_CASO') {
-      estadoInicial = 'cerrado';
-    } else if (casoOpcion === 'NO_ESCALAR_CASO') {
-      if (escaladoA === 'SUPERVISOR') {
-        estadoInicial = 'pendiente-supervisor';
-      } else if (escaladoA === 'OTRA_AREA') {
-        estadoInicial = 'pendiente-otra-area';
-      }
-    } else if (casoOpcion === 'NO_INTERACTUAR_AGENCIA') {
-      estadoInicial = 'pendiente-agencia';
-    }
-
-    const newRequirement = {
+    const payloadBase: Omit<Requirement, 'id' | 'createdAt' | 'updatedAt' | 'history'> = {
       ticketNumber, // Usar el número generado
       nombreAsesor: nombreSolicitante.trim(),
       horaIngresoCorreo: horaIngresoSolicitud,
       correoElectronico: email,
       pais: pais as Pais,
-      origenConsulta: origenConsulta as OrigenConsulta,
-      esSoporteIngles: esSoporteIngles === 'Si',
-      pnrTktLocalizador,
-      tipoSolicitud: tipoSolicitud as TipoSolicitud,
+      baseOrigen: baseOrigen as BaseOrigen,
+      pnrTktLocalizador: pnr,
+      pasajeroNombreApellido: pasajeroNombreApellido.trim(),
+      pasajeroDocumento: pasajeroDocumento.trim(),
+      pasajeroCorreo: passengerEmail,
+      fechaVuelo: new Date(`${fechaVuelo}T00:00:00`),
+      numeroVuelo: numeroVuelo.trim(),
+      tramoVuelo: tramoVuelo.trim(),
+      vueloOperadoPor: vueloOperadoPor as VueloOperadoPor,
       motivo,
       subMotivo,
-      subMotivoOtros: subMotivo === 'Otros' ? subMotivoOtros : undefined,
-      solicitudCliente,
-      casoOpcion,
-      escaladoA: casoOpcion === 'NO_ESCALAR_CASO' ? escaladoA as any : undefined,
-      areaEscalamiento: escaladoA === 'OTRA_AREA' ? areaEscalamiento as AreaEscalamiento : undefined,
-      analisisAnalista: escaladoA === 'SUPERVISOR' ? analisisAnalista : undefined,
-      informacionBrindada,
-      observaciones,
-      status: estadoInicial,
+      comentariosAdicionales: comentariosAdicionales.trim() ? comentariosAdicionales.trim() : undefined,
+      montoVoucherUsd: montoParsed,
+      status: estadoFinal,
       priority: 'media' as const,
-      initialDate: now,
-      resolvedAt: casoOpcion === 'SI_CERRAR_CASO' ? new Date() : undefined,
+      initialDate: initialDateFinal,
     };
 
-    addRequirement(newRequirement);
-    
-    const actionText = casoOpcion === 'SI_CERRAR_CASO' 
-      ? 'creado y cerrado exitosamente' 
-      : casoOpcion === 'NO_ESCALAR_CASO'
-      ? 'creado y escalado exitosamente'
-      : 'creado y marcado para interacción con agencia';
-    
-    toast.success(`Requerimiento ${actionText}`);
+    if (isEditing && existingRequirement) {
+      updateRequirement(existingRequirement.id, payloadBase);
+      toast.success('Requerimiento actualizado exitosamente');
+      navigate(`/requirements/${existingRequirement.id}`);
+      return;
+    }
+
+    addRequirement(payloadBase);
+    toast.success('Requerimiento ingresado exitosamente');
     navigate('/requirements');
   };
 
@@ -344,7 +306,7 @@ const RequirementFormNew = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver
         </Button>
-        <h1 className="text-2xl font-bold">Nuevo Requerimiento</h1>
+        <h1 className="text-2xl font-bold">{isEditing ? 'Editar Requerimiento' : 'Nuevo Requerimiento'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -434,19 +396,25 @@ const RequirementFormNew = () => {
           </CardContent>
         </Card>
 
-        {/* Sección 2: Origen de Consulta */}
+        {/* Sección 2: Origen de la Solicitud */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <Globe className="h-4 w-4" />
-              Sección 2: Origen de Consulta
+              Sección 2: Origen de la Solicitud
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-3">
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="pais">País *</Label>
-                <Select value={pais} onValueChange={(value) => setPais(value as Pais)}>
+                <Select
+                  value={pais}
+                  onValueChange={(value) => {
+                    setPais(value as Pais);
+                    setBaseOrigen('');
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione un país" />
                   </SelectTrigger>
@@ -461,97 +429,167 @@ const RequirementFormNew = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="origenConsulta">Origen *</Label>
-                <Select value={origenConsulta} onValueChange={(value) => setOrigenConsulta(value as OrigenConsulta)}>
+                <Label htmlFor="baseOrigen">Base Origen *</Label>
+                <Select
+                  value={baseOrigen}
+                  onValueChange={(value) => setBaseOrigen(value as BaseOrigen)}
+                  disabled={!pais}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccione origen" />
+                    <SelectValue placeholder={pais ? "Seleccione una base" : "Seleccione país primero"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {origenes.map((origen) => (
-                      <SelectItem key={origen} value={origen}>
-                        {origen}
+                    {(pais ? basesPorPais[pais as Pais] : []).map((base) => (
+                      <SelectItem key={base} value={base}>
+                        {base}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label>Soporte Inglés *</Label>
-                <RadioGroup value={esSoporteIngles} onValueChange={setEsSoporteIngles}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Si" id="soporte-si" />
-                    <Label htmlFor="soporte-si">Sí</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="No" id="soporte-no" />
-                    <Label htmlFor="soporte-no">No</Label>
-                  </div>
-                </RadioGroup>
-              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Sección 3: Datos del Cliente */}
+        {/* Sección 3: Datos del Pasajero y Vuelo */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <FileText className="h-4 w-4" />
-              Sección 3: Datos del Cliente
+              Sección 3: Datos del Pasajero y Vuelo
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="pnrTktLocalizador">PNR/TKT/Localizador *</Label>
-              <div className="relative">
-                <Input
-                  id="pnrTktLocalizador"
-                  value={pnrTktLocalizador}
-                  onChange={(e) => setPnrTktLocalizador(e.target.value)}
-                  placeholder="ABC123 o 1234567890"
-                  className={duplicateCases.length > 0 ? "border-orange-500 focus:border-orange-500" : ""}
-                  required
-                />
+            <div className="rounded-md border border-brand-red-200 bg-brand-red-100/40 p-3 text-sm text-brand-red-800">
+              Nota: Si hay varios pasajeros en la reserva, debe ingresarse uno a uno.
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="pnrTktLocalizador">Código de Reserva (PNR) *</Label>
+                <div className="relative">
+                  <Input
+                    id="pnrTktLocalizador"
+                    value={pnrTktLocalizador}
+                    onChange={(e) => setPnrTktLocalizador(e.target.value.toUpperCase())}
+                    placeholder="Ej: ABC12D"
+                    className={duplicateCases.length > 0 ? "border-orange-500 focus:border-orange-500" : ""}
+                    inputMode="text"
+                    maxLength={6}
+                    required
+                  />
+                  {duplicateCases.length > 0 && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <AlertCircle className="h-4 w-4 text-orange-500" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Debe ser alfanumérico de 6 caracteres, comenzar y terminar con una letra.
+                </p>
                 {duplicateCases.length > 0 && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <AlertCircle className="h-4 w-4 text-orange-500" />
-                  </div>
+                  <p className="text-sm text-orange-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Se encontraron {duplicateCases.length} caso(s) existente(s) con este Código de Reserva (PNR)
+                  </p>
                 )}
               </div>
-              {duplicateCases.length > 0 && (
-                <p className="text-sm text-orange-600 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  Se encontraron {duplicateCases.length} caso(s) existente(s) con este PNR/TKT/Localizador
-                </p>
-              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="pasajeroNombreApellido">Nombre y Apellido del Pasajero *</Label>
+                <Input
+                  id="pasajeroNombreApellido"
+                  value={pasajeroNombreApellido}
+                  onChange={(e) => setPasajeroNombreApellido(e.target.value)}
+                  placeholder="Nombre Apellido"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pasajeroDocumento">RUT / DNI / PASAPORTE *</Label>
+                <Input
+                  id="pasajeroDocumento"
+                  value={pasajeroDocumento}
+                  onChange={(e) => setPasajeroDocumento(e.target.value)}
+                  placeholder="Documento"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pasajeroCorreo">Correo Electrónico del Pasajero *</Label>
+                <Input
+                  id="pasajeroCorreo"
+                  type="email"
+                  value={pasajeroCorreo}
+                  onChange={(e) => setPasajeroCorreo(e.target.value)}
+                  placeholder="pasajero@dominio.com"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fechaVuelo">Fecha del Vuelo *</Label>
+                <Input
+                  id="fechaVuelo"
+                  type="date"
+                  value={fechaVuelo}
+                  onChange={(e) => setFechaVuelo(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="numeroVuelo">N° de Vuelo *</Label>
+                <Input
+                  id="numeroVuelo"
+                  value={numeroVuelo}
+                  onChange={(e) => setNumeroVuelo(e.target.value)}
+                  placeholder="Ej: 1234"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tramoVuelo">Tramo del Vuelo *</Label>
+                <Input
+                  id="tramoVuelo"
+                  value={tramoVuelo}
+                  onChange={(e) => setTramoVuelo(e.target.value.toUpperCase())}
+                  placeholder="Ej: SCL-LIM"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="vueloOperadoPor">Vuelo Operado por *</Label>
+                <Select value={vueloOperadoPor} onValueChange={(value) => setVueloOperadoPor(value as VueloOperadoPor)}>
+                  <SelectTrigger id="vueloOperadoPor">
+                    <SelectValue placeholder="Seleccione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="JA">JA</SelectItem>
+                    <SelectItem value="WJ">WJ</SelectItem>
+                    <SelectItem value="JZ">JZ</SelectItem>
+                    <SelectItem value="J6">J6</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Sección 4: Clasificación */}
+        {/* Sección 4: Motivo y Sub Motivo de la Solicitud de Voucher */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <AlertCircle className="h-4 w-4" />
-              Sección 4: Clasificación
+              Sección 4: Motivo y Sub Motivo de la Solicitud de Voucher
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-3">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="tipoSolicitud">Tipo de Solicitud *</Label>
-                <Select value={tipoSolicitud} onValueChange={(value) => setTipoSolicitud(value as TipoSolicitud)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Solicitudes">Solicitudes</SelectItem>
-                    <SelectItem value="Reclamos">Reclamos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="motivo">Motivo *</Label>
                 <Select value={motivo} onValueChange={setMotivo}>
@@ -559,48 +597,23 @@ const RequirementFormNew = () => {
                     <SelectValue placeholder="Seleccione motivo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {origenConsulta === 'NO CORRESPONDE' ? (
-                      motivosNoCorresponde.map((motivoOption) => (
-                        <SelectItem key={motivoOption} value={motivoOption}>
-                          {motivoOption}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <>
-                        {tipoSolicitud === 'Solicitudes' && motivosSolicitud.map((motivoOption) => (
-                          <SelectItem key={motivoOption} value={motivoOption}>
-                            {motivoOption}
-                          </SelectItem>
-                        ))}
-                        {tipoSolicitud === 'Reclamos' && motivosReclamo.map((motivoOption) => (
-                          <SelectItem key={motivoOption} value={motivoOption}>
-                            {motivoOption}
-                          </SelectItem>
-                        ))}
-                      </>
-                    )}
+                    {motivosVoucher.map((motivoOption) => (
+                      <SelectItem key={motivoOption} value={motivoOption}>
+                        {motivoOption}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="subMotivo">
-                  Sub Motivo {origenConsulta !== 'NO CORRESPONDE' ? '*' : ''}
-                </Label>
-                <Select 
-                  value={subMotivo} 
-                  onValueChange={setSubMotivo}
-                  disabled={origenConsulta === 'NO CORRESPONDE'}
-                >
+                <Label htmlFor="subMotivo">Sub Motivo *</Label>
+                <Select value={subMotivo} onValueChange={setSubMotivo}>
                   <SelectTrigger>
-                    <SelectValue placeholder={
-                      origenConsulta === 'NO CORRESPONDE' 
-                        ? "No aplica para este origen" 
-                        : "Seleccione sub motivo"
-                    } />
+                    <SelectValue placeholder="Seleccione sub motivo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getSubMotivos().map((subMotivoOption) => (
+                    {subMotivosVoucher.map((subMotivoOption) => (
                       <SelectItem key={subMotivoOption} value={subMotivoOption}>
                         {subMotivoOption}
                       </SelectItem>
@@ -610,159 +623,58 @@ const RequirementFormNew = () => {
               </div>
             </div>
 
-            {/* Campo libre para "Otros" */}
-            {subMotivo === 'Otros' && (
-              <div className="space-y-2">
-                <Label htmlFor="subMotivoOtros">Especificar Sub Motivo *</Label>
-                <Input
-                  id="subMotivoOtros"
-                  value={subMotivoOtros}
-                  onChange={(e) => setSubMotivoOtros(e.target.value)}
-                  placeholder="Describe el sub motivo específico"
-                  required
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Solicitud del Cliente */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Solicitud del Cliente</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
             <div className="space-y-2">
-              <Label htmlFor="solicitudCliente">Descripción de la Solicitud *</Label>
+              <Label htmlFor="comentariosAdicionales">Comentarios adicionales</Label>
               <Textarea
-                id="solicitudCliente"
-                value={solicitudCliente}
-                onChange={(e) => setSolicitudCliente(e.target.value)}
-                placeholder="Describe detalladamente la solicitud del cliente..."
-                rows={4}
-                required
+                id="comentariosAdicionales"
+                value={comentariosAdicionales}
+                onChange={(e) => setComentariosAdicionales(e.target.value)}
+                placeholder="Ingresa comentarios adicionales..."
+                rows={3}
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* Control de Gestión de Casos */}
+        {/* Sección 5: Información del Voucher */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Gestión del Caso</CardTitle>
+            <CardTitle className="text-base">Sección 5: Información del Voucher</CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-3">
+          <CardContent className="pt-0">
             <div className="space-y-2">
-              <Label>¿Puedes entregar la información requerida? *</Label>
-              <RadioGroup value={casoOpcion} onValueChange={(value) => setCasoOpcion(value as CasoOpcion)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="SI_CERRAR_CASO" id="cerrar-caso" />
-                  <Label htmlFor="cerrar-caso">Sí y Cerrar Caso</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="NO_ESCALAR_CASO" id="escalar-caso" />
-                  <Label htmlFor="escalar-caso">No y Escalar Caso</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="NO_INTERACTUAR_AGENCIA" id="interactuar-agencia" />
-                  <Label htmlFor="interactuar-agencia">No y Interactuar con Agencia</Label>
-                </div>
-              </RadioGroup>
+              <Label htmlFor="montoVoucherUsd">Monto del Voucher (USD) *</Label>
+              <Input
+                id="montoVoucherUsd"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="0.01"
+                value={montoVoucherUsd}
+                onChange={(e) => setMontoVoucherUsd(e.target.value)}
+                placeholder="Ej: 100"
+                required
+              />
+              <p className="text-xs text-muted-foreground">Moneda del Voucher: USD</p>
             </div>
 
-            {/* Opción: Escalar Caso */}
-            {casoOpcion === 'NO_ESCALAR_CASO' && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Escalar a: *</Label>
-                  <RadioGroup value={escaladoA} onValueChange={setEscaladoA}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="SUPERVISOR" id="escalado-supervisor" />
-                      <Label htmlFor="escalado-supervisor">Supervisor</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="OTRA_AREA" id="escalado-area" />
-                      <Label htmlFor="escalado-area">Otra Área</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {escaladoA === 'SUPERVISOR' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="analisisAnalista">Análisis y Motivo del Escalamiento *</Label>
-                    <Textarea
-                      id="analisisAnalista"
-                      value={analisisAnalista}
-                      onChange={(e) => setAnalisisAnalista(e.target.value)}
-                      placeholder="Proporciona un análisis detallado del caso y el motivo por el cual necesitas escalarlo al supervisor..."
-                      rows={4}
-                      required
-                    />
-                  </div>
-                )}
-
-                {escaladoA === 'OTRA_AREA' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="areaEscalamiento">Seleccione el Área *</Label>
-                    <Select value={areaEscalamiento} onValueChange={(value) => setAreaEscalamiento(value as AreaEscalamiento)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione un área" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {areasEscalamiento.map((area) => (
-                          <SelectItem key={area} value={area}>
-                            {area}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            )}
-
+            <div className="mt-4 rounded-md border bg-muted/30 p-3 text-sm">
+              <p className="font-semibold mb-2">Condiciones del Voucher</p>
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                <li>El Voucher no paga tasas de embarque.</li>
+                <li>Es sólo para compra de servicios JetSMART.</li>
+                <li>No paga servicios de comida o bebida a bordo del avión.</li>
+                <li>Es válido por 180 días desde su emisión.</li>
+                <li>
+                  Si utilizas tu Voucher y te queda saldo a favor, podrás utilizar ese saldo en una futura compra dentro del período
+                  de validez; posterior a este expirará y quedará sin valor.
+                </li>
+                <li>El Voucher no es reembolsable, ni redimible en dinero y no es acumulable.</li>
+                <li>Todo Voucher es al portador; por lo mismo es responsabilidad del cliente el debido uso y custodia de éste.</li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
-
-        {/* Información Brindada - Solo para casos que se van a cerrar */}
-        {casoOpcion === 'SI_CERRAR_CASO' && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Información Brindada</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              {availableScripts.length > 0 && (
-                <ScriptSelector
-                  scripts={availableScripts}
-                  onApplyScript={handleApplyScript}
-                />
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="informacionBrindada">Información Brindada al Cliente *</Label>
-                <Textarea
-                  id="informacionBrindada"
-                  value={informacionBrindada}
-                  onChange={(e) => setInformacionBrindada(e.target.value)}
-                  placeholder="Describe la información que se le brindó al cliente..."
-                  rows={4}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observaciones">Observaciones</Label>
-                <Textarea
-                  id="observaciones"
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  placeholder="Observaciones adicionales..."
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Botones de Acción */}
         <div className="flex justify-end gap-3">
@@ -770,15 +682,7 @@ const RequirementFormNew = () => {
             Cancelar
           </Button>
           <Button type="submit" size="sm" className="gap-2">
-            {casoOpcion === 'SI_CERRAR_CASO' ? (
-              <>
-                ✅ Crear y Cerrar Caso
-              </>
-            ) : (
-              <>
-                📝 Crear Requerimiento
-              </>
-            )}
+            {isEditing ? 'Guardar cambios' : 'Crear Requerimiento'}
           </Button>
         </div>
       </form>
