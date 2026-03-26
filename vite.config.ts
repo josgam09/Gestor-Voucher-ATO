@@ -7,9 +7,9 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0",
-    port: 8082,
+    port: 8080,
     strictPort: true,
-    open: false,
+    open: true,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    __APP_NAME__: JSON.stringify("Manager-GDS"),
+    __APP_NAME__: JSON.stringify("Gestor Voucher ATO"),
     __APP_VERSION__: JSON.stringify("1.0.0"),
   },
 }));

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useRequirements } from '@/contexts/RequirementContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,21 +8,131 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import RequirementStatusBadge from '@/components/RequirementStatusBadge';
 import RequirementPriorityBadge from '@/components/RequirementPriorityBadge';
-import { ArrowLeft, Home, Mail, User, Calendar, Clock, Server, CheckCircle2, Eye, Send } from 'lucide-react';
+import { ArrowLeft, Home, Mail, User, Calendar, Clock, Server, CheckCircle2, Eye, MessageSquare, CircleAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import type { UserRole } from '@/types/user';
+import type { RequirementInteractionPriority } from '@/types/requirement';
 
 const RequirementDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getRequirement, updateRequirement } = useRequirements();
+  const { getRequirement, updateRequirement, addInteraction, respondInteraction, closeInteraction } = useRequirements();
 
   const [fechaEnvioVoucherInput, setFechaEnvioVoucherInput] = useState(''); // yyyy-mm-dd
-  const [comentarioRevision, setComentarioRevision] = useState('');
+  const [interactionPriority, setInteractionPriority] = useState<RequirementInteractionPriority>('NORMAL');
+  const [interactionToRole, setInteractionToRole] = useState<UserRole>('SOPORTE_CC');
+  const [interactionTitle, setInteractionTitle] = useState('');
+  const [interactionMessage, setInteractionMessage] = useState('');
+  const [interactionResponses, setInteractionResponses] = useState<Record<string, string>>({});
 
   const requirement = id ? getRequirement(id) : undefined;
+
+  const getRoleLabel = (role: UserRole) => {
+    switch (role) {
+      case 'AEROPUERTO_ATO':
+        return 'Aeropuerto (ATO)';
+      case 'SOPORTE_CC':
+        return 'Soporte CC';
+      case 'SUPERVISOR':
+        return 'Supervisor';
+      case 'ADMINISTRADOR':
+        return 'Administrador';
+      default:
+        return role;
+    }
+  };
+
+  const initInteractionToRole = (currentRole?: UserRole) => {
+    if (!currentRole) return;
+    if (currentRole === 'AEROPUERTO_ATO') {
+      setInteractionToRole('SOPORTE_CC');
+    } else if (currentRole === 'SOPORTE_CC') {
+      setInteractionToRole('AEROPUERTO_ATO');
+    }
+  };
+
+  const canModerate = !!user && (user.role === 'ADMINISTRADOR' || user.role === 'SUPERVISOR');
+
+  const canCreateInteractions =
+    !!user && (user.role === 'AEROPUERTO_ATO' || user.role === 'SOPORTE_CC' || user.role === 'ADMINISTRADOR');
+
+  const handleCreateInteraction = () => {
+    if (!requirement || !user) return;
+    if (!canCreateInteractions) {
+      toast.error('Tu perfil no puede crear interacciones');
+      return;
+    }
+    if (!interactionMessage.trim()) {
+      toast.error('Ingresa el detalle de la interacción');
+      return;
+    }
+
+    addInteraction(requirement.id, {
+      type: 'SOLICITUD_INFO',
+      priority: interactionPriority,
+      createdByName: user.name,
+      createdByRole: user.role,
+      toRole: interactionToRole,
+      title: interactionTitle.trim() ? interactionTitle.trim() : undefined,
+      message: interactionMessage.trim(),
+    });
+
+    toast.success('Interacción creada');
+    setInteractionTitle('');
+    setInteractionMessage('');
+    setInteractionPriority('NORMAL');
+    initInteractionToRole(user.role);
+  };
+
+  const handleRespondInteraction = (interactionId: string) => {
+    if (!requirement || !user) return;
+    if (!(user.role === 'AEROPUERTO_ATO' || user.role === 'SOPORTE_CC' || user.role === 'ADMINISTRADOR')) {
+      toast.error('Tu perfil no puede responder interacciones');
+      return;
+    }
+    const responseMessage = (interactionResponses[interactionId] || '').trim();
+    if (!responseMessage) {
+      toast.error('Ingresa una respuesta');
+      return;
+    }
+
+    respondInteraction(requirement.id, interactionId, {
+      respondedByName: user.name,
+      respondedByRole: user.role,
+      responseMessage,
+    });
+
+    toast.success('Respuesta enviada');
+    setInteractionResponses((prev) => ({ ...prev, [interactionId]: '' }));
+  };
+
+  const handleCloseInteraction = (interactionId: string) => {
+    if (!requirement || !user) return;
+    if (!(user.role === 'ADMINISTRADOR')) {
+      toast.error('Solo el Administrador puede cerrar interacciones');
+      return;
+    }
+    closeInteraction(requirement.id, interactionId, {
+      closedByName: user.name,
+      closedByRole: user.role,
+    });
+    toast.success('Interacción cerrada');
+  };
+
+  useEffect(() => {
+    initInteractionToRole(user?.role);
+  }, [user?.role]);
 
   const handleMarkEnGestion = () => {
     if (!requirement || !user) return;
@@ -49,61 +159,6 @@ const RequirementDetail = () => {
     });
 
     toast.success('Caso marcado como EN GESTIÓN');
-  };
-
-  const handleSolicitarRevisionSupervisor = () => {
-    if (!requirement || !user) return;
-    if (user.role !== 'SOPORTE_CC') {
-      toast.error('No tienes permisos para solicitar revisión');
-      return;
-    }
-    if (requirement.status !== 'en-gestion') {
-      toast.error('Solo puedes solicitar revisión cuando el caso está en EN GESTIÓN');
-      return;
-    }
-
-    updateRequirement(requirement.id, {
-      status: 'revision-supervisor',
-      assignedTeam: 'Supervisor',
-      history: [
-        ...requirement.history,
-        {
-          id: Date.now().toString(),
-          date: new Date(),
-          action: 'Solicitud de visto bueno al Supervisor',
-          user: user.name,
-          comment: comentarioRevision.trim() ? comentarioRevision.trim() : undefined,
-        },
-      ],
-    });
-
-    toast.success('Caso enviado a Revisión del Supervisor');
-  };
-
-  const handleAprobarRevision = () => {
-    if (!requirement || !user) return;
-    if (!['SUPERVISOR', 'ADMINISTRADOR'].includes(user.role)) {
-      toast.error('No tienes permisos para aprobar revisión');
-      return;
-    }
-    if (requirement.status !== 'revision-supervisor') return;
-
-    updateRequirement(requirement.id, {
-      status: 'en-gestion',
-      assignedTeam: 'Soporte CC',
-      history: [
-        ...requirement.history,
-        {
-          id: Date.now().toString(),
-          date: new Date(),
-          action: 'Visto bueno aprobado por Supervisor',
-          user: user.name,
-          comment: 'El caso vuelve a En Gestión para envío de voucher',
-        },
-      ],
-    });
-
-    toast.success('Revisión aprobada. Caso devuelto a Soporte CC.');
   };
 
   const handleMarkVoucherAsSent = () => {
@@ -172,10 +227,17 @@ const RequirementDetail = () => {
   const canEdit =
     !!user &&
     (user.role === 'ADMINISTRADOR' ||
-      user.role === 'SUPERVISOR' ||
       (user.role === 'AEROPUERTO_ATO' &&
         requirement.nombreAsesor === user.name &&
         requirement.status === 'ingresado'));
+
+  const interactions = requirement.interactions || [];
+  const availableToRoles: UserRole[] = (() => {
+    if (!user) return ['SOPORTE_CC'];
+    if (user.role === 'AEROPUERTO_ATO') return ['SOPORTE_CC'];
+    if (user.role === 'SOPORTE_CC') return ['AEROPUERTO_ATO'];
+    return ['AEROPUERTO_ATO', 'SOPORTE_CC'];
+  })();
 
   return (
     <div className="space-y-6">
@@ -223,8 +285,15 @@ const RequirementDetail = () => {
                   <p className="text-muted-foreground font-mono">{requirement.pnrTktLocalizador}</p>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">País</h3>
-                  <p className="text-muted-foreground">{requirement.pais}</p>
+                  <h3 className="font-semibold mb-2">Sección 2: Origen de la Solicitud</h3>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">País:</span> {requirement.pais}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Base Origen:</span> {requirement.baseOrigen}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -274,6 +343,27 @@ const RequirementDetail = () => {
                     <div>
                       <h4 className="text-sm font-medium mb-1">Vuelo Operado por</h4>
                       <p className="text-muted-foreground font-mono">{requirement.vueloOperadoPor}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+              <div className="space-y-2">
+                <h3 className="font-semibold">Sección 4: Motivo y Sub Motivo de la Solicitud de Voucher</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <h4 className="text-sm font-medium mb-1">Motivo</h4>
+                    <p className="text-muted-foreground">{requirement.motivo || '-'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-1">Sub Motivo</h4>
+                    <p className="text-muted-foreground">{requirement.subMotivo || '-'}</p>
+                  </div>
+                  {requirement.comentariosAdicionales && (
+                    <div className="md:col-span-2">
+                      <h4 className="text-sm font-medium mb-1">Comentarios adicionales</h4>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{requirement.comentariosAdicionales}</p>
                     </div>
                   )}
                 </div>
@@ -345,37 +435,6 @@ const RequirementDetail = () => {
                         </Button>
                       </div>
                     </div>
-
-                    <Separator />
-                    <div className="space-y-2">
-                      <Label htmlFor="comentarioRevision">Enviar a Supervisor para visto bueno (opcional)</Label>
-                      <Input
-                        id="comentarioRevision"
-                        value={comentarioRevision}
-                        onChange={(e) => setComentarioRevision(e.target.value)}
-                        placeholder="Comentario/razón para revisión..."
-                      />
-                      <Button variant="secondary" onClick={handleSolicitarRevisionSupervisor} className="w-full">
-                        <Send className="h-4 w-4 mr-2" />
-                        Solicitar visto bueno
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {requirement.status === 'revision-supervisor' && (
-                  <div className="rounded-md border p-3 space-y-3">
-                    <p className="font-semibold">Revisión del Supervisor</p>
-                    {user?.role === 'SOPORTE_CC' && (
-                      <p className="text-sm text-muted-foreground">
-                        Caso en revisión. Espera el visto bueno del Supervisor para continuar el envío.
-                      </p>
-                    )}
-                    {user && ['SUPERVISOR', 'ADMINISTRADOR'].includes(user.role) && (
-                      <Button onClick={handleAprobarRevision} className="w-full">
-                        Aprobar visto bueno
-                      </Button>
-                    )}
                   </div>
                 )}
               </div>
@@ -388,6 +447,202 @@ const RequirementDetail = () => {
                     <p className="text-muted-foreground whitespace-pre-wrap">{requirement.observaciones}</p>
                   </div>
                 </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Interacciones del caso
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-start gap-2">
+                  <CircleAlert className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Crea <span className="font-medium">solicitudes de información</span> asociadas a este caso. Quedarán marcadas como
+                    pendientes hasta que se respondan y/o cierren.
+                  </p>
+                </div>
+
+                {!canCreateInteractions && (
+                  <div className="text-sm text-muted-foreground">
+                    Vista de seguimiento: tu rol no crea ni responde interacciones.
+                  </div>
+                )}
+
+                {canCreateInteractions && (
+                  <>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Input value="Solicitud de información" disabled />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Prioridad</Label>
+                    <Select value={interactionPriority} onValueChange={(v) => setInteractionPriority(v as RequirementInteractionPriority)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="URGENTE">Urgente</SelectItem>
+                        <SelectItem value="NORMAL">Normal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Para</Label>
+                    <Select value={interactionToRole} onValueChange={(v) => setInteractionToRole(v as UserRole)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableToRoles.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {getRoleLabel(r)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Título (opcional)</Label>
+                  <Input
+                    value={interactionTitle}
+                    onChange={(e) => setInteractionTitle(e.target.value)}
+                    placeholder="Ej: Validar datos de pasajero"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Detalle *</Label>
+                  <Textarea
+                    value={interactionMessage}
+                    onChange={(e) => setInteractionMessage(e.target.value)}
+                    placeholder="Escribe aquí la solicitud/tarea/escalamiento..."
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleCreateInteraction}>
+                    Crear interacción
+                  </Button>
+                </div>
+                  </>
+                )}
+              </div>
+
+              {interactions.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  No hay interacciones registradas aún.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {interactions.map((it) => {
+                    const pendingForUser = it.status === 'PENDIENTE';
+                    const canRespond =
+                      it.status === 'PENDIENTE' &&
+                      !!user &&
+                      (user.role === 'AEROPUERTO_ATO' || user.role === 'SOPORTE_CC' || user.role === 'ADMINISTRADOR') &&
+                      (user.role === 'ADMINISTRADOR' || it.toRole === user.role);
+                    const canClose =
+                      !!user &&
+                      it.status !== 'CERRADA' &&
+                      user.role === 'ADMINISTRADOR';
+
+                    return (
+                      <div key={it.id} className="rounded-md border p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="secondary">Solicitud de información</Badge>
+                            <Badge
+                              variant="outline"
+                              className={
+                                it.priority === 'URGENTE'
+                                  ? 'border-destructive/30 text-destructive bg-destructive/10'
+                                  : 'border-emerald-500/30 text-emerald-700 bg-emerald-500/10 dark:text-emerald-300'
+                              }
+                            >
+                              {it.priority}
+                            </Badge>
+                            <Badge variant="outline">{it.status}</Badge>
+                            {pendingForUser && (
+                              <Badge className="bg-destructive/10 text-destructive border-destructive/20" variant="outline">
+                                Pendiente
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(it.createdAt).toLocaleString('es-AR')}
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-muted-foreground">
+                          De <span className="font-medium">{it.createdByName}</span> ({getRoleLabel(it.createdByRole)}) → Para{' '}
+                          <span className="font-medium">{getRoleLabel(it.toRole)}</span>
+                        </div>
+
+                        {it.title && <p className="text-sm font-medium">{it.title}</p>}
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{it.message}</p>
+
+                        {it.responseMessage && (
+                          <div className="rounded-md bg-muted/30 p-3 space-y-1">
+                            <p className="text-xs text-muted-foreground">
+                              Respuesta de{' '}
+                              <span className="font-medium">{it.respondedByName || 'N/A'}</span>{' '}
+                              {it.respondedByRole ? `(${getRoleLabel(it.respondedByRole)})` : ''}{' '}
+                              {it.respondedAt ? `· ${new Date(it.respondedAt).toLocaleString('es-AR')}` : ''}
+                            </p>
+                            <p className="text-sm whitespace-pre-wrap">{it.responseMessage}</p>
+                          </div>
+                        )}
+
+                        {canRespond && (
+                          <div className="grid gap-2">
+                            <Label className="text-xs">Responder</Label>
+                            <Textarea
+                              value={interactionResponses[it.id] || ''}
+                              onChange={(e) =>
+                                setInteractionResponses((prev) => ({ ...prev, [it.id]: e.target.value }))
+                              }
+                              placeholder="Escribe la respuesta..."
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button variant="secondary" onClick={() => handleRespondInteraction(it.id)}>
+                                Responder
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {(canRespond || canClose) && (
+                          <div className="flex justify-end gap-2 pt-1">
+                            {canClose && (
+                              <Button variant="outline" onClick={() => handleCloseInteraction(it.id)}>
+                                Cerrar
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {it.closedAt && (
+                          <p className="text-xs text-muted-foreground">
+                            Cerrado por <span className="font-medium">{it.closedByName || 'N/A'}</span>{' '}
+                            {it.closedByRole ? `(${getRoleLabel(it.closedByRole)})` : ''}{' '}
+                            · {new Date(it.closedAt).toLocaleString('es-AR')}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>

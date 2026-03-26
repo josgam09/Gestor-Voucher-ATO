@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { RequirementProvider } from "@/contexts/RequirementContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
@@ -13,7 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import RequirementsList from "@/pages/RequirementsList";
 import RequirementDetail from "@/pages/RequirementDetail";
 import RequirementForm from "@/pages/RequirementFormNew";
-import SupervisorInbox from "@/pages/SupervisorInbox";
+import InteractionsInbox from "@/pages/InteractionsInbox";
 import AdminPanel from "@/pages/admin/AdminPanel";
 import UserManagement from "@/pages/admin/UserManagement";
 import FieldManagement from "@/pages/admin/FieldManagement";
@@ -22,6 +22,15 @@ import DashboardManagement from "@/pages/admin/DashboardManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+/** Para Aeropuerto y Soporte la vista inicial es el listado de requerimientos (con columna Interacción); el resto ve Dashboard. */
+const HomePage = () => {
+  const { user } = useAuth();
+  if (user && (user.role === 'AEROPUERTO_ATO' || user.role === 'SOPORTE_CC')) {
+    return <Navigate to="/requirements" replace />;
+  }
+  return <Dashboard />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -43,12 +52,13 @@ const App = () => (
                   <ProtectedRoute>
                     <Layout>
                       <Routes>
-                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/" element={<HomePage />} />
                         <Route path="/requirements" element={<RequirementsList />} />
+                        <Route path="/interactions" element={<InteractionsInbox />} />
                         <Route 
                           path="/requirements/new" 
                           element={
-                            <ProtectedRoute allowedRoles={['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO']}>
+                            <ProtectedRoute allowedRoles={['ADMINISTRADOR', 'AEROPUERTO_ATO']}>
                               <RequirementForm />
                             </ProtectedRoute>
                           } 
@@ -57,18 +67,8 @@ const App = () => (
                         <Route 
                           path="/requirements/:id/edit" 
                           element={
-                            <ProtectedRoute allowedRoles={['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO']}>
+                            <ProtectedRoute allowedRoles={['ADMINISTRADOR', 'AEROPUERTO_ATO']}>
                               <RequirementForm />
-                            </ProtectedRoute>
-                          } 
-                        />
-                        
-                        {/* Bandeja de Supervisor */}
-                        <Route 
-                          path="/supervisor/inbox" 
-                          element={
-                            <ProtectedRoute allowedRoles={['ADMINISTRADOR', 'SUPERVISOR']}>
-                              <SupervisorInbox />
                             </ProtectedRoute>
                           } 
                         />

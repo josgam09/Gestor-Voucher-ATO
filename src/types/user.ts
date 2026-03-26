@@ -33,7 +33,7 @@ export const DEMO_USERS = [
   },
   {
     id: '2',
-    name: 'Supervisor de Soporte',
+    name: 'Supervisor de Proceso',
     email: 'supervisor@jetsmart.com',
     password: 'password123',
     role: 'SUPERVISOR' as UserRole,

@@ -31,8 +31,9 @@ app.get("/health/db", async (_req, res) => {
     const [rows] = await pool.query("SELECT 1 as ok");
     await pool.end();
     res.json({ ok: true, rows });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err?.message || "Error de conexión" });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Error de conexión";
+    res.status(500).json({ ok: false, error: message });
   }
 });
 

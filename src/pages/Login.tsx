@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Lock, Mail, Shield, Users, UserCheck } from 'lucide-react';
+import { Lock, Mail, Shield, Users, UserCheck, MessageSquare, Download, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DEMO_USERS } from '@/types/user';
 
@@ -18,11 +18,15 @@ const Login = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const success = login(email, password);
+    const loggedUser = login(email, password);
     
-    if (success) {
+    if (loggedUser) {
       toast.success('¡Bienvenido a Gestor Voucher ATO!');
-      navigate('/');
+      if (loggedUser.role === 'AEROPUERTO_ATO' || loggedUser.role === 'SOPORTE_CC') {
+        navigate('/requirements');
+      } else {
+        navigate('/');
+      }
     } else {
       toast.error('Credenciales incorrectas. Verifica tu email y contraseña.');
     }
@@ -34,10 +38,14 @@ const Login = () => {
     
     // Auto-submit después de un pequeño delay para que el usuario vea las credenciales
     setTimeout(() => {
-      const success = login(demoEmail, 'password123');
-      if (success) {
+      const loggedUser = login(demoEmail, 'password123');
+      if (loggedUser) {
         toast.success('¡Bienvenido a Gestor Voucher ATO!');
-        navigate('/');
+        if (loggedUser.role === 'AEROPUERTO_ATO' || loggedUser.role === 'SOPORTE_CC') {
+          navigate('/requirements');
+        } else {
+          navigate('/');
+        }
       }
     }, 300);
   };
@@ -85,34 +93,45 @@ const Login = () => {
               <ul className="space-y-3">
               <li className="flex items-start gap-3">
                 <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Shield className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <strong>Gestión Inteligente</strong>
-                  <p className="text-sm text-muted-foreground">
-                    30+ scripts de respuesta basados en casos reales
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <strong>Sistema de Escalamiento</strong>
-                  <p className="text-sm text-muted-foreground">
-                    Deriva casos a supervisores o áreas especializadas
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
                   <UserCheck className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <strong>Multi-Rol</strong>
+                  <strong>Flujo Multi‑Rol</strong>
                   <p className="text-sm text-muted-foreground">
-                    Perfiles diferenciados: Aeropuerto (ATO), Soporte CC, Supervisor y Administrador
+                    Perfiles: Aeropuerto (ATO), Soporte CC, Supervisor y Administrador
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <strong>Estados y control</strong>
+                  <p className="text-sm text-muted-foreground">
+                    Ingresado → En Gestión → Enviado (cierre)
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Download className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <strong>Gestión masiva</strong>
+                  <p className="text-sm text-muted-foreground">
+                    Exportación a CSV y acciones masivas para Soporte CC (Ingresado → En Gestión / En Gestión → Enviado)
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <strong>Interacciones por caso</strong>
+                  <p className="text-sm text-muted-foreground">
+                    Solicitudes de información con pendientes y bandeja de seguimiento (visible para Supervisor/Admin)
                   </p>
                 </div>
               </li>

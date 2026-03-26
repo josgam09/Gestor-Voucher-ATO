@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo  Iniciando Manager-GDS
+echo  Iniciando Gestor Voucher ATO
 echo ========================================
 echo.
 cd /d "%~dp0"
@@ -14,7 +14,7 @@ echo  Iniciando servidor de desarrollo...
 echo ========================================
 echo.
 echo El servidor estara disponible en:
-echo   http://localhost:5173
+echo   http://localhost:8080
 echo.
 echo Presiona Ctrl+C para detener el servidor
 echo.

@@ -1,8 +1,9 @@
+import type { UserRole } from '@/types/user';
+
 export type RequirementStatus = 
   | 'ingresado'
   | 'en-gestion'
-  | 'enviado'
-  | 'revision-supervisor';
+  | 'enviado';
 export type RequirementPriority = 'baja' | 'media' | 'alta' | 'critica';
 
 // Nombre del Asesor (13 asesores)
@@ -199,6 +200,42 @@ export interface RequirementHistory {
   comment?: string;
 }
 
+export type RequirementInteractionType =
+  | 'SOLICITUD_INFO';
+
+export type RequirementInteractionPriority =
+  | 'URGENTE'
+  | 'NORMAL';
+
+export type RequirementInteractionStatus =
+  | 'PENDIENTE'
+  | 'RESPONDIDA'
+  | 'CERRADA';
+
+export interface RequirementInteraction {
+  id: string;
+  type: RequirementInteractionType;
+  priority: RequirementInteractionPriority;
+  status: RequirementInteractionStatus;
+
+  createdAt: Date;
+  createdByRole: UserRole;
+  createdByName: string;
+
+  toRole: UserRole;
+  title?: string;
+  message: string;
+
+  respondedAt?: Date;
+  respondedByRole?: UserRole;
+  respondedByName?: string;
+  responseMessage?: string;
+
+  closedAt?: Date;
+  closedByRole?: UserRole;
+  closedByName?: string;
+}
+
 // (nota) Roles del sistema se definen en `src/types/user.ts`.
 
 export interface Requirement {
@@ -253,6 +290,7 @@ export interface Requirement {
   
   // Historial y extras
   history: RequirementHistory[];
+  interactions: RequirementInteraction[];
   attachments?: string[];
   tags?: string[];
 }

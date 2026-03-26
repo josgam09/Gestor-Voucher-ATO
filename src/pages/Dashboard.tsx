@@ -1,6 +1,6 @@
 import { useRequirements } from '@/contexts/RequirementContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import StatCard from '@/components/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,16 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { AlertCircle, CheckCircle, Clock, TrendingUp, Plus, Download, Filter, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart as BarChartIcon, ChevronDown, ChevronUp, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, TrendingUp, Plus, Download, Filter, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart as BarChartIcon, ChevronDown, ChevronUp, X, ArrowUpDown, ArrowUp, ArrowDown, DollarSign } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { RequirementStatus, RequirementPriority, BaseOrigen, Pais, AsesorName } from '@/types/requirement';
+import { RequirementStatus, RequirementPriority, BaseOrigen, Pais, AsesorName, RequirementInteractionPriority } from '@/types/requirement';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
-import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import { toast } from 'sonner';
 import RequirementStatusBadge from '@/components/RequirementStatusBadge';
 
@@ -58,6 +59,7 @@ const Dashboard = () => {
   const [origenFilter, setOrigenFilter] = useState<BaseOrigen | 'all'>('all');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('all');
   const [motivoFilter, setMotivoFilter] = useState<string>('all');
+  const [interactionFilter, setInteractionFilter] = useState<'all' | 'pending' | 'none' | 'urgent' | 'normal'>('all');
 
   // Estados de ordenamiento
   const [sortColumn, setSortColumn] = useState<string>('createdAt');
@@ -73,6 +75,7 @@ const Dashboard = () => {
     origenFilter !== 'all',
     assignedToFilter !== 'all',
     motivoFilter !== 'all',
+    interactionFilter !== 'all',
   ].filter(Boolean).length;
 
   // Función para limpiar todos los filtros
@@ -86,8 +89,16 @@ const Dashboard = () => {
     setOrigenFilter('all');
     setAssignedToFilter('all');
     setMotivoFilter('all');
+    setInteractionFilter('all');
     toast.success('Filtros limpiados');
   };
+
+  const getPendingInteractionsPriority = useCallback((req: (typeof requirements)[number]): RequirementInteractionPriority | null => {
+    const interactions = req.interactions || [];
+    const pending = interactions.filter((it) => it.status === 'PENDIENTE');
+    if (pending.length === 0) return null;
+    return pending.some((it) => it.priority === 'URGENTE') ? 'URGENTE' : 'NORMAL';
+  }, []);
 
   // Filtrar casos según el rol
   const requirementsToShow = hasRole(['AEROPUERTO_ATO']) && user
@@ -110,7 +121,9 @@ const Dashboard = () => {
       const matchesSearch = !search || 
         req.ticketNumber.toLowerCase().includes(search.toLowerCase()) ||
         req.pnrTktLocalizador.toLowerCase().includes(search.toLowerCase()) ||
-        req.nombreAsesor.toLowerCase().includes(search.toLowerCase());
+        req.nombreAsesor.toLowerCase().includes(search.toLowerCase()) ||
+        (req.correoElectronico?.toLowerCase() || '').includes(search.toLowerCase()) ||
+        (req.pasajeroCorreo?.toLowerCase() || '').includes(search.toLowerCase());
 
       // Filtro de estado
       const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
@@ -174,7 +187,15 @@ const Dashboard = () => {
       // Filtro de motivo
       const matchesMotivo = motivoFilter === 'all' || req.motivo === motivoFilter;
 
-      return matchesSearch && matchesStatus && matchesPriority && matchesDate && matchesCountry && matchesOrigen && matchesAssignedTo && matchesMotivo;
+      const pendingPriority = getPendingInteractionsPriority(req);
+      const matchesInteractions =
+        interactionFilter === 'all' ||
+        (interactionFilter === 'pending' && pendingPriority !== null) ||
+        (interactionFilter === 'none' && pendingPriority === null) ||
+        (interactionFilter === 'urgent' && pendingPriority === 'URGENTE') ||
+        (interactionFilter === 'normal' && pendingPriority === 'NORMAL');
+
+      return matchesSearch && matchesStatus && matchesPriority && matchesDate && matchesCountry && matchesOrigen && matchesAssignedTo && matchesMotivo && matchesInteractions;
     });
 
     // Aplicar ordenamiento
@@ -220,13 +241,12 @@ const Dashboard = () => {
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [requirementsToShow, search, statusFilter, priorityFilter, dateFilter, dateRange, countryFilter, origenFilter, assignedToFilter, motivoFilter, sortColumn, sortDirection]);
+  }, [requirementsToShow, search, statusFilter, priorityFilter, dateFilter, dateRange, countryFilter, origenFilter, assignedToFilter, motivoFilter, interactionFilter, sortColumn, sortDirection, getPendingInteractionsPriority]);
 
   const stats = {
     total: filteredRequirements.length,
     ingresado: filteredRequirements.filter(r => r.status === 'ingresado').length,
     enGestion: filteredRequirements.filter(r => r.status === 'en-gestion').length,
-    revisionSupervisor: filteredRequirements.filter(r => r.status === 'revision-supervisor').length,
     enviado: filteredRequirements.filter(r => r.status === 'enviado').length,
     critical: filteredRequirements.filter(r => r.priority === 'critica').length,
   };
@@ -260,7 +280,7 @@ const Dashboard = () => {
       }
       assignedCounts[asesor].total += 1;
       if (req.status === 'ingresado') assignedCounts[asesor].nuevo += 1;
-      if (req.status === 'en-gestion' || req.status === 'revision-supervisor') assignedCounts[asesor].enGestion += 1;
+      if (req.status === 'en-gestion') assignedCounts[asesor].enGestion += 1;
       if (req.status === 'enviado') assignedCounts[asesor].cerrado += 1;
     });
     
@@ -298,6 +318,23 @@ const Dashboard = () => {
     }));
   }, [filteredRequirements]);
 
+  const voucherCostByBaseData = useMemo(() => {
+    const baseCosts: Record<string, number> = {};
+    filteredRequirements.forEach((req) => {
+      if (req.status !== 'enviado') return;
+      const amount = typeof req.montoVoucherUsd === 'number' ? req.montoVoucherUsd : Number(req.montoVoucherUsd);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      baseCosts[req.baseOrigen] = (baseCosts[req.baseOrigen] || 0) + amount;
+    });
+    return Object.entries(baseCosts)
+      .map(([baseOrigen, costUsd]) => ({ baseOrigen, costUsd }))
+      .sort((a, b) => b.costUsd - a.costUsd);
+  }, [filteredRequirements]);
+
+  const totalVoucherCostUsd = useMemo(() => {
+    return voucherCostByBaseData.reduce((acc, x) => acc + x.costUsd, 0);
+  }, [voucherCostByBaseData]);
+
   // Colores corporativos PANTONE
   const PANTONE_3125 = 'rgb(0, 174, 199)';   // Turquesa
   const PANTONE_534 = 'rgb(21, 50, 102)';    // Azul oscuro
@@ -323,7 +360,33 @@ const Dashboard = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Ticket', 'País', 'Base Origen', 'PNR', 'Estado', 'Fecha Envío', 'Prioridad', 'Asignado a', 'Motivo', 'Fecha Creación'];
+    const headers = [
+      'Ticket',
+      'País',
+      'Base Origen',
+      'PNR',
+      'Estado',
+      'Fecha Envío',
+      'Prioridad',
+      'Asignado a',
+      'Motivo',
+      'Sub Motivo',
+      'Monto Voucher (USD)',
+      'Solicitante (ATO)',
+      'Email Solicitante',
+      'Hora Ingreso',
+      'Comentarios',
+      'Pasajero',
+      'Documento',
+      'Correo Pasajero',
+      'Fecha Vuelo',
+      'N° Vuelo',
+      'Tramo',
+      'Operado por',
+      'Observaciones',
+      'Equipo',
+      'Fecha Creación',
+    ];
     const rows = filteredRequirements.map(req => [
       req.ticketNumber,
       req.pais,
@@ -334,6 +397,21 @@ const Dashboard = () => {
       req.priority,
       req.assignedTo || '',
       req.motivo || '',
+      req.subMotivo || '',
+      typeof req.montoVoucherUsd === 'number' ? req.montoVoucherUsd : '',
+      req.nombreAsesor || '',
+      req.correoElectronico || '',
+      req.horaIngresoCorreo || '',
+      req.comentariosAdicionales || '',
+      req.pasajeroNombreApellido || '',
+      req.pasajeroDocumento || '',
+      req.pasajeroCorreo || '',
+      req.fechaVuelo ? new Date(req.fechaVuelo).toLocaleDateString('es-AR') : '',
+      req.numeroVuelo || '',
+      req.tramoVuelo || '',
+      req.vueloOperadoPor || '',
+      req.observaciones || '',
+      req.assignedTeam || '',
       new Date(req.createdAt).toLocaleString('es-AR'),
     ]);
 
@@ -382,13 +460,11 @@ const Dashboard = () => {
               ? `Tus requerimientos ingresados - ${user?.name}`
               : hasRole(['SOPORTE_CC'])
               ? 'Gestión de vouchers (casos ingresados por ATO)'
-              : hasRole(['SUPERVISOR'])
-              ? 'Control y supervisión de todos los casos'
               : 'Resumen general de requerimientos y gestión'
             }
           </p>
         </div>
-        {hasRole(['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO']) && (
+        {hasRole(['ADMINISTRADOR', 'AEROPUERTO_ATO']) && (
         <Link to="/requirements/new">
           <Button size="lg" className="gap-2">
             <Plus className="h-5 w-5" />
@@ -399,7 +475,7 @@ const Dashboard = () => {
       </div>
 
       {/* Estadísticas Compactas */}
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title={hasRole(['AEROPUERTO_ATO']) ? "Mis Requerimientos" : "Total Requerimientos"}
           value={stats.total}
@@ -417,12 +493,6 @@ const Dashboard = () => {
         <StatCard
           title="En Gestión"
           value={stats.enGestion}
-          icon={Clock}
-          color="warning"
-        />
-        <StatCard
-          title="Revisión Supervisor"
-          value={stats.revisionSupervisor}
           icon={Clock}
           color="warning"
         />
@@ -465,7 +535,7 @@ const Dashboard = () => {
               <Label htmlFor="search" className="text-xs font-medium mb-1.5 block">Buscar</Label>
               <Input
                 id="search"
-                placeholder="Ticket, asunto, PNR..."
+                placeholder="Ticket, PNR, correo..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-9"
@@ -479,11 +549,10 @@ const Dashboard = () => {
                 <SelectTrigger id="statusFilter" className="h-9">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+              <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="ingresado">Ingresado</SelectItem>
                   <SelectItem value="en-gestion">En Gestión</SelectItem>
-                  <SelectItem value="revision-supervisor">Revisión Supervisor</SelectItem>
                   <SelectItem value="enviado">Enviado</SelectItem>
                 </SelectContent>
               </Select>
@@ -582,7 +651,7 @@ const Dashboard = () => {
           {/* Filtros Avanzados - Colapsables */}
           {showAdvancedFilters && (
             <div className="pt-3 border-t">
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
                 {/* País */}
                 <div>
                   <Label htmlFor="countryFilter" className="text-xs font-medium mb-1.5 block">País</Label>
@@ -619,6 +688,23 @@ const Dashboard = () => {
                           {base}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Interacciones */}
+                <div>
+                  <Label htmlFor="interactionFilter" className="text-xs font-medium mb-1.5 block">Interacciones</Label>
+                  <Select value={interactionFilter} onValueChange={(value) => setInteractionFilter(value as typeof interactionFilter)}>
+                    <SelectTrigger id="interactionFilter" className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="pending">Con pendientes</SelectItem>
+                      <SelectItem value="none">Sin pendientes</SelectItem>
+                      <SelectItem value="urgent">Pendiente Urgente</SelectItem>
+                      <SelectItem value="normal">Pendiente Normal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -667,7 +753,7 @@ const Dashboard = () => {
 
       {/* Gráficos - Solo para Admin y Supervisor */}
       {hasRole(['ADMINISTRADOR', 'SUPERVISOR']) && filteredRequirements.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Gráfico de Torta - Requerimientos por Base Origen */}
           <Card>
             <CardHeader className="pb-3">
@@ -677,25 +763,107 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <ResponsiveContainer width="100%" height={280}>
+              <ChartContainer
+                config={{
+                  count: { label: "Requerimientos", color: PANTONE_534 },
+                }}
+                className="h-[280px] w-full aspect-auto"
+              >
                 <PieChart>
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(_, payload) => {
+                          const p0 = payload?.[0];
+                          const row =
+                            p0 && typeof p0 === "object" && "payload" in p0
+                              ? (p0 as { payload?: unknown }).payload
+                              : undefined;
+                          const origen =
+                            row && typeof row === "object" && row !== null && "origen" in row
+                              ? (row as { origen?: unknown }).origen
+                              : undefined;
+                          return typeof origen === "string" ? origen : "";
+                        }}
+                      />
+                    }
+                  />
                   <Pie
                     data={origenChartData}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ origen, count, percent }) => `${origen}: ${count} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={80}
-                    fill="#8884d8"
+                    innerRadius={58}
+                    outerRadius={82}
+                    paddingAngle={2}
+                    stroke="hsl(var(--border))"
                     dataKey="count"
+                    nameKey="origen"
                   >
                     {origenChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={ORIGEN_COLORS[entry.origen] || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
                 </PieChart>
-              </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico de costos - Vouchers enviados por Base Origen */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <DollarSign className="h-4 w-4" />
+                Costos de Voucher (USD) · Enviados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {voucherCostByBaseData.length === 0 ? (
+                <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">
+                  No hay vouchers enviados para calcular costos con los filtros actuales.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    Total: <span className="font-semibold text-foreground">{totalVoucherCostUsd.toLocaleString('es-AR')} USD</span>
+                  </div>
+                  <ChartContainer
+                    config={{
+                      costUsd: { label: "Costo (USD)", color: PANTONE_1805 },
+                    }}
+                    className="h-[250px] w-full aspect-auto"
+                  >
+                    <BarChart data={voucherCostByBaseData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="baseOrigen" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => `${Number(v).toLocaleString('es-AR')}`}
+                      />
+                      <ChartTooltip
+                        content={
+                          <ChartTooltipContent
+                            labelFormatter={(_, payload) => {
+                              const p0 = payload?.[0];
+                              const row =
+                                p0 && typeof p0 === "object" && "payload" in p0
+                                  ? (p0 as { payload?: unknown }).payload
+                                  : undefined;
+                              const base =
+                                row && typeof row === "object" && row !== null && "baseOrigen" in row
+                                  ? (row as { baseOrigen?: unknown }).baseOrigen
+                                  : undefined;
+                              return typeof base === "string" ? `Base: ${base}` : "";
+                            }}
+                          />
+                        }
+                      />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Bar dataKey="costUsd" fill={PANTONE_1805} radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -708,18 +876,50 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={assignedToChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="asesor" angle={-45} textAnchor="end" height={100} fontSize={11} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="nuevos" fill={PANTONE_3125} name="Nuevos" />
-                  <Bar dataKey="enGestion" fill={PANTONE_534} name="En Gestión" />
-                  <Bar dataKey="cerrados" fill={PANTONE_1805} name="Enviados (Cerrados)" />
+              <ChartContainer
+                config={{
+                  nuevos: { label: "Ingresado", color: PANTONE_3125 },
+                  enGestion: { label: "En Gestión", color: PANTONE_534 },
+                  cerrados: { label: "Enviado (Cerrado)", color: PANTONE_1805 },
+                }}
+                className="h-[280px] w-full aspect-auto"
+              >
+                <BarChart data={assignedToChartData} margin={{ top: 10, right: 10, left: 0, bottom: 55 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="asesor"
+                    angle={-35}
+                    textAnchor="end"
+                    height={70}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(_, payload) => {
+                          const p0 = payload?.[0];
+                          const row =
+                            p0 && typeof p0 === "object" && "payload" in p0
+                              ? (p0 as { payload?: unknown }).payload
+                              : undefined;
+                          const asesor =
+                            row && typeof row === "object" && row !== null && "asesor" in row
+                              ? (row as { asesor?: unknown }).asesor
+                              : undefined;
+                          return typeof asesor === "string" ? asesor : "";
+                        }}
+                      />
+                    }
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Bar dataKey="nuevos" fill={PANTONE_3125} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="enGestion" fill={PANTONE_534} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="cerrados" fill={PANTONE_1805} radius={[6, 6, 0, 0]} />
                 </BarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
           </CardContent>
         </Card>
 
@@ -732,32 +932,40 @@ const Dashboard = () => {
               </CardTitle>
           </CardHeader>
             <CardContent className="pt-0">
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={motivoChartData} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="motivo" width={150} fontSize={11} />
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white p-3 border-2 rounded shadow-lg" style={{ borderColor: PANTONE_534 }}>
-                            <p className="font-semibold mb-2" style={{ color: PANTONE_534 }}>{data.fullMotivo}</p>
-                            <p className="text-sm font-medium" style={{ color: PANTONE_534 }}>Pendientes: {data.pendiente}</p>
-                            <p className="text-sm font-medium" style={{ color: PANTONE_3125 }}>Enviados: {data.cerrado}</p>
-                            <p className="text-sm font-bold mt-1" style={{ color: PANTONE_1805 }}>Total: {data.total}</p>
-                </div>
-                        );
-                      }
-                      return null;
-                    }}
+              <ChartContainer
+                config={{
+                  pendiente: { label: "Pendiente", color: PANTONE_534 },
+                  cerrado: { label: "Enviado (Cerrado)", color: PANTONE_3125 },
+                }}
+                className="h-[280px] w-full aspect-auto"
+              >
+                <BarChart data={motivoChartData} layout="horizontal" margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                  <XAxis type="number" tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="motivo" width={150} fontSize={11} tickLine={false} axisLine={false} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(_, payload) => {
+                          const p0 = payload?.[0];
+                          const row =
+                            p0 && typeof p0 === "object" && "payload" in p0
+                              ? (p0 as { payload?: unknown }).payload
+                              : undefined;
+                          const full =
+                            row && typeof row === "object" && row !== null && "fullMotivo" in row
+                              ? (row as { fullMotivo?: unknown }).fullMotivo
+                              : undefined;
+                          return typeof full === "string" ? full : "";
+                        }}
+                      />
+                    }
                   />
-                  <Legend />
-                  <Bar dataKey="pendiente" stackId="a" fill={PANTONE_534} name="Pendiente" />
-                  <Bar dataKey="cerrado" stackId="a" fill={PANTONE_3125} name="Enviado (Cerrado)" />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Bar dataKey="pendiente" stackId="a" fill={PANTONE_534} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="cerrado" stackId="a" fill={PANTONE_3125} radius={[6, 6, 0, 0]} />
                 </BarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
           </CardContent>
         </Card>
       </div>
@@ -781,6 +989,9 @@ const Dashboard = () => {
                       {sortColumn === 'ticketNumber' && (sortDirection === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />)}
                       {sortColumn !== 'ticketNumber' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
                     </Button>
+                  </TableHead>
+                  <TableHead className="py-2 text-xs font-semibold">
+                    Código de Reserva (PNR)
                   </TableHead>
                   <TableHead className="py-2">
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent" onClick={() => handleSort('pais')}>
@@ -827,12 +1038,27 @@ const Dashboard = () => {
                       {sortColumn !== 'assignedTo' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
                     </Button>
                   </TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Solicitante (ATO)</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Email Solicitante</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Hora Ingreso</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Sub Motivo</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Comentarios</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Pasajero</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Documento</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Correo Pasajero</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Fecha Vuelo</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">N° Vuelo</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Tramo</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Operado por</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Monto Voucher (USD)</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Observaciones</TableHead>
+                  <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Equipo</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRequirements.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={24} className="text-center py-8 text-muted-foreground">
                       No se encontraron requerimientos con los filtros aplicados
                     </TableCell>
                   </TableRow>
@@ -843,6 +1069,9 @@ const Dashboard = () => {
                         <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded font-semibold">
                           {req.ticketNumber}
                         </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono">{req.pnrTktLocalizador}</span>
                       </TableCell>
                       <TableCell className="py-2">
                         <span className="text-xs font-semibold">{req.pais}</span>
@@ -875,6 +1104,69 @@ const Dashboard = () => {
                         ) : (
                           <span className="text-xs text-muted-foreground italic">Sin asignar</span>
                         )}
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap">{req.nombreAsesor || '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.correoElectronico || ''}>
+                          {req.correoElectronico || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap">{req.horaIngresoCorreo || '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.subMotivo || ''}>
+                          {req.subMotivo || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs max-w-[220px] inline-block truncate align-middle" title={req.comentariosAdicionales || ''}>
+                          {req.comentariosAdicionales || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.pasajeroNombreApellido || ''}>
+                          {req.pasajeroNombreApellido || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.pasajeroDocumento || ''}>
+                          {req.pasajeroDocumento || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.pasajeroCorreo || ''}>
+                          {req.pasajeroCorreo || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap">
+                          {req.fechaVuelo ? new Date(req.fechaVuelo).toLocaleDateString('es-AR') : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap">{req.numeroVuelo || '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap" title={req.tramoVuelo || ''}>
+                          {req.tramoVuelo || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap">{req.vueloOperadoPor || '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap">{Number.isFinite(req.montoVoucherUsd) ? req.montoVoucherUsd : '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs max-w-[220px] inline-block truncate align-middle" title={req.observaciones || ''}>
+                          {req.observaciones || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap">{req.assignedTeam || '-'}</span>
                       </TableCell>
                     </TableRow>
                   ))

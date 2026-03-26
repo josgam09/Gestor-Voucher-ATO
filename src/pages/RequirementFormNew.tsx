@@ -20,6 +20,41 @@ import {
   VueloOperadoPor
 } from '@/types/requirement';
 
+// Mapa IATA → país (código) para determinar si el tramo es nacional (mismo país) o internacional (origen y destino en países distintos)
+const IATA_A_PAIS: Record<string, string> = (() => {
+  const basesPorPais: Record<string, string[]> = {
+    AR: ['EZE', 'AEP', 'CRD', 'COR', 'FTE', 'MDZ', 'NQN', 'RES', 'SLA', 'BRC', 'CPC', 'TUC', 'REL', 'IGR', 'USH'],
+    BR: ['GIG', 'GRU', 'FLN', 'IGU', 'NAT', 'REC'],
+    CL: ['SCL', 'ANF', 'ARI', 'BBA', 'CJC', 'CCP', 'IQQ', 'LSC', 'PMC', 'ZCO'],
+    CO: ['BAQ', 'BOG', 'CLO', 'CTG', 'CUC', 'MDE', 'MTR', 'PEI', 'ADZ', 'SMR'],
+    DO: ['PUJ'],
+    EC: ['UIO'],
+    PE: ['LIM', 'AQP', 'CJA', 'CIX', 'CUZ', 'PIU', 'TPP', 'TRU'],
+    PY: ['ASU'],
+    UY: ['MVD'],
+  };
+  const map: Record<string, string> = {};
+  for (const [pais, bases] of Object.entries(basesPorPais)) {
+    for (const iata of bases) map[iata] = pais;
+  }
+  return map;
+})();
+const MONTO_NACIONAL_USD = 200;   // origen y destino en el mismo país
+const MONTO_INTERNACIONAL_USD = 400; // origen en un país, destino en otro
+
+/** Dado un tramo "ORIGEN-DESTINO" (ej. LIM-AEP): nacional = mismo país → 200 USD, internacional = distintos países → 400 USD. null si formato inválido o IATA no reconocido. */
+function getMontoVoucherFromTramo(tramo: string): number | null {
+  const t = tramo.trim().toUpperCase();
+  if (!t) return null;
+  const parts = t.split('-').map((p) => p.trim());
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  const [origen, destino] = parts;
+  const paisOrigen = IATA_A_PAIS[origen];
+  const paisDestino = IATA_A_PAIS[destino];
+  if (!paisOrigen || !paisDestino) return null;
+  return paisOrigen === paisDestino ? MONTO_NACIONAL_USD : MONTO_INTERNACIONAL_USD;
+}
+
 const RequirementFormNew = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -78,7 +113,7 @@ const RequirementFormNew = () => {
         navigate(`/requirements/${existingRequirement.id}`);
         return;
       }
-    } else if (!hasRole(['SUPERVISOR', 'ADMINISTRADOR'])) {
+    } else if (!hasRole(['ADMINISTRADOR'])) {
       toast.error('No tienes permisos para editar este requerimiento.');
       navigate(`/requirements/${existingRequirement.id}`);
       return;
@@ -158,6 +193,12 @@ const RequirementFormNew = () => {
   useEffect(() => {
     setSubMotivo('');
   }, [motivo]);
+
+  // Monto del voucher según tramo: nacional (ambos IATA Chile) = 200 USD, internacional = 400 USD. No editable.
+  useEffect(() => {
+    const monto = getMontoVoucherFromTramo(tramoVuelo);
+    setMontoVoucherUsd(monto !== null ? String(monto) : '');
+  }, [tramoVuelo]);
 
   // Verificar duplicados cuando cambie el PNR
   useEffect(() => {
@@ -254,7 +295,7 @@ const RequirementFormNew = () => {
     const montoParsed = Number(String(montoVoucherUsd).replace(',', '.'));
     const isValidMonto = Number.isFinite(montoParsed) && montoParsed > 0;
     if (!isValidMonto) {
-      toast.error('Por favor ingrese un Monto del Voucher (USD) válido (mayor que 0)');
+      toast.error('Ingrese un tramo válido (ej: SCL-LIM o SCL-ANF) para que se calcule el monto del voucher.');
       return;
     }
 
@@ -263,7 +304,7 @@ const RequirementFormNew = () => {
     // - Edición: mantener estado actual
     const estadoFinal: RequirementStatus = isEditing && existingRequirement ? existingRequirement.status : 'ingresado';
 
-    const payloadBase: Omit<Requirement, 'id' | 'createdAt' | 'updatedAt' | 'history'> = {
+    const payloadBase: Omit<Requirement, 'id' | 'createdAt' | 'updatedAt' | 'history' | 'interactions'> = {
       ticketNumber, // Usar el número generado
       nombreAsesor: nombreSolicitante.trim(),
       horaIngresoCorreo: horaIngresoSolicitud,
@@ -651,11 +692,14 @@ const RequirementFormNew = () => {
                 min={0}
                 step="0.01"
                 value={montoVoucherUsd}
-                onChange={(e) => setMontoVoucherUsd(e.target.value)}
-                placeholder="Ej: 100"
-                required
+                readOnly
+                disabled
+                className="bg-muted font-medium"
+                placeholder="Según tramo: mismo país 200 USD / distinto país 400 USD"
               />
-              <p className="text-xs text-muted-foreground">Moneda del Voucher: USD</p>
+              <p className="text-xs text-muted-foreground">
+                Monto según tramo (IATA): nacional = origen y destino en el mismo país (ej. SCL-ANF, LIM-AQP) = 200 USD; internacional = origen en un país y destino en otro (ej. LIM-AEP, SCL-LIM) = 400 USD. No modificable.
+              </p>
             </div>
 
             <div className="mt-4 rounded-md border bg-muted/30 p-3 text-sm">

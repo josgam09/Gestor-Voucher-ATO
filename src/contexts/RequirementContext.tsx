@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Requirement, RequirementStatus, RequirementPriority } from '@/types/requirement';
+import { Requirement, RequirementInteraction, RequirementInteractionStatus } from '@/types/requirement';
+import type { UserRole } from '@/types/user';
 
 interface RequirementContextType {
   requirements: Requirement[];
-  addRequirement: (requirement: Omit<Requirement, 'id' | 'createdAt' | 'updatedAt' | 'history'>) => void;
+  addRequirement: (requirement: Omit<Requirement, 'id' | 'createdAt' | 'updatedAt' | 'history' | 'interactions'>) => void;
   updateRequirement: (id: string, updates: Partial<Requirement>) => void;
   deleteRequirement: (id: string) => void;
   getRequirement: (id: string) => Requirement | undefined;
   addRequirementHistory: (id: string, action: string, comment?: string) => void;
   findDuplicateCases: (pnrTktLocalizador: string) => Requirement[];
+  addInteraction: (requirementId: string, interaction: Omit<RequirementInteraction, 'id' | 'createdAt' | 'status'>) => void;
+  respondInteraction: (requirementId: string, interactionId: string, response: { responseMessage: string; respondedByName: string; respondedByRole: UserRole }) => void;
+  closeInteraction: (requirementId: string, interactionId: string, closedBy: { closedByName: string; closedByRole: UserRole }) => void;
 }
 
 const RequirementContext = createContext<RequirementContextType | undefined>(undefined);
@@ -29,11 +33,11 @@ const mockRequirements: Requirement[] = [
     pasajeroCorreo: 'juan.perez@example.com',
     fechaVuelo: new Date('2025-01-14'),
     numeroVuelo: '1234',
-    tramoVuelo: 'BOG-CTG',
+    tramoVuelo: 'BOG-LIM',
     vueloOperadoPor: 'JA',
     motivo: 'OVBK Operacional',
     subMotivo: 'Voluntario',
-    montoVoucherUsd: 120,
+    montoVoucherUsd: 400, // internacional (Colombia → Perú)
     fechaEnvioVoucher: new Date('2025-01-16'),
     observaciones: 'Caso cerrado por envío de voucher. Cliente confirmó recepción.',
     status: 'enviado',
@@ -59,6 +63,7 @@ const mockRequirements: Requirement[] = [
         comment: 'Fecha de envío: 2025-01-16',
       },
     ],
+    interactions: [],
     tags: ['ato', 'amadeus', 'error-emision'],
   },
   {
@@ -79,11 +84,12 @@ const mockRequirements: Requirement[] = [
     vueloOperadoPor: 'WJ',
     motivo: 'OVBK Comercial',
     subMotivo: 'Involuntario',
-    montoVoucherUsd: 80,
-    observaciones: 'Caso requiere revisión del supervisor antes de envío.',
-    status: 'revision-supervisor',
+    montoVoucherUsd: 200, // nacional (Colombia)
+    observaciones: 'Caso en gestión por Soporte CC.',
+    status: 'en-gestion',
     priority: 'media',
-    assignedTeam: 'Supervisor',
+    assignedTeam: 'Soporte CC',
+    assignedTo: 'Soporte CC',
     initialDate: new Date('2025-01-18'),
     createdAt: new Date('2025-01-18'),
     updatedAt: new Date('2025-01-18'),
@@ -94,15 +100,23 @@ const mockRequirements: Requirement[] = [
         action: 'Requerimiento creado',
         user: 'Sistema',
       },
+      {
+        id: '2',
+        date: new Date('2025-01-18'),
+        action: 'Caso en gestión',
+        user: 'Soporte CC',
+        comment: 'Estado actualizado a En Gestión',
+      },
     ],
+    interactions: [],
     tags: ['ato', 'sabre', 'voucher'],
   },
   {
     id: '3',
     ticketNumber: 'VO_ATO-2025-003',
-    nombreAsesor: 'José Ramos',
+    nombreAsesor: 'Aeropuerto ATO',
     horaIngresoCorreo: '11:00',
-    correoElectronico: 'agencia@travel.com',
+    correoElectronico: 'ato@jetsmart.com',
     pais: 'BR',
     baseOrigen: 'GRU',
     pnrTktLocalizador: 'C3DE4F',
@@ -115,7 +129,7 @@ const mockRequirements: Requirement[] = [
     vueloOperadoPor: 'JZ',
     motivo: 'OVBK Operacional',
     subMotivo: 'Involuntario',
-    montoVoucherUsd: 55,
+    montoVoucherUsd: 200, // nacional (Brasil)
     observaciones: 'En gestión por Soporte CC.',
     status: 'en-gestion',
     priority: 'baja',
@@ -147,6 +161,7 @@ const mockRequirements: Requirement[] = [
         comment: 'Gestión de voucher en proceso',
       },
     ],
+    interactions: [],
     tags: ['facturacion', 'finanzas', 'nota-credito'],
   },
   {
@@ -163,11 +178,11 @@ const mockRequirements: Requirement[] = [
     pasajeroCorreo: 'carlos.mendoza@example.com',
     fechaVuelo: new Date('2025-01-19'),
     numeroVuelo: '3456',
-    tramoVuelo: 'EZE-AEP',
+    tramoVuelo: 'EZE-LIM',
     vueloOperadoPor: 'J6',
     motivo: 'OVBK Comercial',
     subMotivo: 'Voluntario',
-    montoVoucherUsd: 35,
+    montoVoucherUsd: 400, // internacional (Argentina → Perú)
     observaciones: 'Caso ingresado por ATO.',
     status: 'ingresado',
     priority: 'alta',
@@ -183,14 +198,15 @@ const mockRequirements: Requirement[] = [
         user: 'Sistema',
       },
     ],
+    interactions: [],
     tags: ['ato', 'sabre', 'check-in'],
   },
   {
     id: '5',
     ticketNumber: 'VO_ATO-2025-005',
-    nombreAsesor: 'Carlos Mendoza',
+    nombreAsesor: 'Aeropuerto ATO',
     horaIngresoCorreo: '08:20',
-    correoElectronico: 'agencia@travel.com',
+    correoElectronico: 'ato@jetsmart.com',
     pais: 'CL',
     baseOrigen: 'SCL',
     pnrTktLocalizador: 'E5FG6H',
@@ -203,7 +219,7 @@ const mockRequirements: Requirement[] = [
     vueloOperadoPor: 'JA',
     motivo: 'OVBK Operacional',
     subMotivo: 'Voluntario',
-    montoVoucherUsd: 200,
+    montoVoucherUsd: 200, // nacional (Chile)
     fechaEnvioVoucher: new Date('2025-01-20'),
     observaciones: 'Caso cerrado por envío de voucher. Cliente informado sobre procedimiento.',
     status: 'enviado',
@@ -229,14 +245,15 @@ const mockRequirements: Requirement[] = [
         comment: 'Fecha de envío: 2025-01-20',
       },
     ],
+    interactions: [],
     tags: ['amadeus', 'certificado-medico', 'waiver'],
   },
   {
     id: '6',
     ticketNumber: 'VO_ATO-2025-006',
-    nombreAsesor: 'Laura Torres',
+    nombreAsesor: 'Aeropuerto ATO',
     horaIngresoCorreo: '13:30',
-    correoElectronico: 'support@example.com',
+    correoElectronico: 'ato@jetsmart.com',
     pais: 'PE',
     baseOrigen: 'LIM',
     pnrTktLocalizador: 'F6GH7J',
@@ -245,11 +262,11 @@ const mockRequirements: Requirement[] = [
     pasajeroCorreo: 'pedro.silva@example.com',
     fechaVuelo: new Date('2025-01-21'),
     numeroVuelo: '2468',
-    tramoVuelo: 'LIM-AQP',
+    tramoVuelo: 'LIM-SCL',
     vueloOperadoPor: 'WJ',
     motivo: 'OVBK Comercial',
     subMotivo: 'Involuntario',
-    montoVoucherUsd: 65,
+    montoVoucherUsd: 400, // internacional (Perú → Chile)
     observaciones: 'En gestión por Soporte CC.',
     status: 'en-gestion',
     priority: 'media',
@@ -273,6 +290,7 @@ const mockRequirements: Requirement[] = [
         comment: 'Estado actualizado a En Gestión',
       },
     ],
+    interactions: [],
     tags: ['soporte-cc', 'tarifas'],
   },
 ];
@@ -280,12 +298,13 @@ const mockRequirements: Requirement[] = [
 export const RequirementProvider = ({ children }: { children: ReactNode }) => {
   const [requirements, setRequirements] = useState<Requirement[]>(mockRequirements);
 
-  const addRequirement = (requirement: Omit<Requirement, 'id' | 'createdAt' | 'updatedAt' | 'history'>) => {
+  const addRequirement = (requirement: Omit<Requirement, 'id' | 'createdAt' | 'updatedAt' | 'history' | 'interactions'>) => {
     const newRequirement: Requirement = {
       ...requirement,
       id: Date.now().toString(),
       createdAt: new Date(),
       updatedAt: new Date(),
+      interactions: [],
       history: [
         {
           id: '1',
@@ -357,6 +376,115 @@ export const RequirementProvider = ({ children }: { children: ReactNode }) => {
     return duplicates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
+  const addInteraction: RequirementContextType['addInteraction'] = (requirementId, interaction) => {
+    setRequirements((prev) =>
+      prev.map((req) => {
+        if (req.id !== requirementId) return req;
+
+        const newInteraction: RequirementInteraction = {
+          ...interaction,
+          id: Date.now().toString(),
+          createdAt: new Date(),
+          status: 'PENDIENTE',
+        };
+
+        return {
+          ...req,
+          interactions: [newInteraction, ...(req.interactions || [])],
+          history: [
+            ...req.history,
+            {
+              id: `${Date.now()}-history`,
+              date: new Date(),
+              action: `Interacción creada (${newInteraction.type})`,
+              user: newInteraction.createdByName,
+              comment: newInteraction.title ? `${newInteraction.title}: ${newInteraction.message}` : newInteraction.message,
+            },
+          ],
+          updatedAt: new Date(),
+        };
+      })
+    );
+  };
+
+  const respondInteraction: RequirementContextType['respondInteraction'] = (requirementId, interactionId, response) => {
+    setRequirements((prev) =>
+      prev.map((req) => {
+        if (req.id !== requirementId) return req;
+
+        const interactions = (req.interactions || []).map((it) => {
+          if (it.id !== interactionId) return it;
+          if (it.status !== 'PENDIENTE') return it;
+
+          return {
+            ...it,
+            status: 'RESPONDIDA' as RequirementInteractionStatus,
+            respondedAt: new Date(),
+            respondedByName: response.respondedByName,
+            respondedByRole: response.respondedByRole,
+            responseMessage: response.responseMessage,
+          };
+        });
+
+        const interacted = req.interactions?.find((it) => it.id === interactionId);
+
+        return {
+          ...req,
+          interactions,
+          history: [
+            ...req.history,
+            {
+              id: `${Date.now()}-history`,
+              date: new Date(),
+              action: `Interacción respondida (${interacted?.type || 'N/A'})`,
+              user: response.respondedByName,
+              comment: response.responseMessage,
+            },
+          ],
+          updatedAt: new Date(),
+        };
+      })
+    );
+  };
+
+  const closeInteraction: RequirementContextType['closeInteraction'] = (requirementId, interactionId, closedBy) => {
+    setRequirements((prev) =>
+      prev.map((req) => {
+        if (req.id !== requirementId) return req;
+
+        const interactions = (req.interactions || []).map((it) => {
+          if (it.id !== interactionId) return it;
+          if (it.status === 'CERRADA') return it;
+
+          return {
+            ...it,
+            status: 'CERRADA' as RequirementInteractionStatus,
+            closedAt: new Date(),
+            closedByName: closedBy.closedByName,
+            closedByRole: closedBy.closedByRole,
+          };
+        });
+
+        const interacted = req.interactions?.find((it) => it.id === interactionId);
+
+        return {
+          ...req,
+          interactions,
+          history: [
+            ...req.history,
+            {
+              id: `${Date.now()}-history`,
+              date: new Date(),
+              action: `Interacción cerrada (${interacted?.type || 'N/A'})`,
+              user: closedBy.closedByName,
+            },
+          ],
+          updatedAt: new Date(),
+        };
+      })
+    );
+  };
+
   return (
     <RequirementContext.Provider value={{
       requirements,
@@ -366,6 +494,9 @@ export const RequirementProvider = ({ children }: { children: ReactNode }) => {
       getRequirement,
       addRequirementHistory,
       findDuplicateCases,
+      addInteraction,
+      respondInteraction,
+      closeInteraction,
     }}>
       {children}
     </RequirementContext.Provider>

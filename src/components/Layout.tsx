@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LayoutDashboard, List, PlusCircle, Menu, Settings, LogOut, Shield, Users as UsersIcon, UserCheck, Inbox } from 'lucide-react';
+import { LayoutDashboard, List, PlusCircle, Menu, Settings, LogOut, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRequirements } from '@/contexts/RequirementContext';
 import { toast } from 'sonner';
 
 interface LayoutProps {
@@ -17,6 +18,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { user, logout, hasRole } = useAuth();
+  const { requirements } = useRequirements();
 
   const handleLogout = () => {
     logout();
@@ -28,14 +30,13 @@ const Layout = ({ children }: LayoutProps) => {
   const baseNavigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO', 'SOPORTE_CC'] },
     { name: 'Requerimientos', href: '/requirements', icon: List, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO', 'SOPORTE_CC'] },
+    { name: 'Interacciones', href: '/interactions', icon: MessageSquare, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO', 'SOPORTE_CC'] },
   ];
 
   // Navegación según rol
   const roleNavigation = [
     // Aeropuerto (ATO) puede crear nuevos requerimientos
-    { name: 'Nuevo Requerimiento', href: '/requirements/new', icon: PlusCircle, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO'] },
-    // Supervisor tiene bandeja especial
-    { name: 'Bandeja Supervisor', href: '/supervisor/inbox', icon: Inbox, roles: ['ADMINISTRADOR', 'SUPERVISOR'] },
+    { name: 'Nuevo Requerimiento', href: '/requirements/new', icon: PlusCircle, roles: ['ADMINISTRADOR', 'AEROPUERTO_ATO'] },
     // Administrador tiene panel de administración
     { name: 'Panel Admin', href: '/admin', icon: Settings, roles: ['ADMINISTRADOR'] },
   ];
@@ -44,6 +45,16 @@ const Layout = ({ children }: LayoutProps) => {
   const navigation = [...baseNavigation, ...roleNavigation].filter(item =>
     !user || item.roles.includes(user.role)
   );
+
+  const pendingInteractionsCount = useMemo(() => {
+    if (!user) return 0;
+    const isModerator = hasRole(['SUPERVISOR', 'ADMINISTRADOR']);
+    return requirements.reduce((acc, req) => {
+      const interactions = req.interactions || [];
+      const count = interactions.filter((it) => it.status === 'PENDIENTE' && (isModerator || it.toRole === user.role)).length;
+      return acc + count;
+    }, 0);
+  }, [requirements, user, hasRole]);
 
   // Obtener iniciales del usuario
   const getUserInitials = (name?: string) => {
@@ -132,7 +143,12 @@ const Layout = ({ children }: LayoutProps) => {
                             `}
                           >
                             <Icon className="h-6 w-6 shrink-0" />
-                            {item.name}
+                            <span className="flex-1">{item.name}</span>
+                            {item.href === '/interactions' && pendingInteractionsCount > 0 && (
+                              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-destructive text-destructive-foreground text-[11px] leading-none">
+                                {pendingInteractionsCount}
+                              </span>
+                            )}
                           </Link>
                         </li>
                       );
@@ -229,7 +245,12 @@ const Layout = ({ children }: LayoutProps) => {
                                   `}
                                 >
                                   <Icon className="h-6 w-6 shrink-0" />
-                                  {item.name}
+                                  <span className="flex-1">{item.name}</span>
+                                  {item.href === '/interactions' && pendingInteractionsCount > 0 && (
+                                    <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-destructive text-destructive-foreground text-[11px] leading-none">
+                                      {pendingInteractionsCount}
+                                    </span>
+                                  )}
                                 </Link>
                               </li>
                             );

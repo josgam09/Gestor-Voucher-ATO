@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useRequirements } from '@/contexts/RequirementContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,10 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import RequirementStatusBadge from '@/components/RequirementStatusBadge';
 import RequirementPriorityBadge from '@/components/RequirementPriorityBadge';
-import { Plus, Home, Download, Filter, Calendar as CalendarIcon, ChevronDown, ChevronUp, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { RequirementStatus, RequirementPriority, BaseOrigen, Pais, AsesorName } from '@/types/requirement';
+import { Plus, Home, Download, Filter, Calendar as CalendarIcon, ChevronDown, ChevronUp, X, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare } from 'lucide-react';
+import { RequirementStatus, RequirementPriority, BaseOrigen, Pais, AsesorName, RequirementInteractionPriority } from '@/types/requirement';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -61,6 +62,15 @@ const RequirementsList = () => {
   const [priorityFilter, setPriorityFilter] = useState<RequirementPriority | 'all'>('all');
   const [origenFilter, setOrigenFilter] = useState<BaseOrigen | 'all'>('all');
   const [motivoFilter, setMotivoFilter] = useState<string>('all');
+  const [interactionFilter, setInteractionFilter] = useState<'all' | 'pending' | 'none' | 'urgent' | 'normal'>('all');
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const [bulkAssignee, setBulkAssignee] = useState<string>('Soporte CC');
+  const getPendingInteractionsPriority = useCallback((req: (typeof requirements)[number]): RequirementInteractionPriority | null => {
+    const interactions = req.interactions || [];
+    const pending = interactions.filter((it) => it.status === 'PENDIENTE');
+    if (pending.length === 0) return null;
+    return pending.some((it) => it.priority === 'URGENTE') ? 'URGENTE' : 'NORMAL';
+  }, []);
   
   // Estados de ordenamiento
   const [sortColumn, setSortColumn] = useState<string>('createdAt');
@@ -76,6 +86,7 @@ const RequirementsList = () => {
     priorityFilter !== 'all',
     origenFilter !== 'all',
     motivoFilter !== 'all',
+    interactionFilter !== 'all',
   ].filter(Boolean).length;
 
   // Función para limpiar todos los filtros
@@ -89,7 +100,58 @@ const RequirementsList = () => {
     setPriorityFilter('all');
     setOrigenFilter('all');
     setMotivoFilter('all');
+    setInteractionFilter('all');
     toast.success('Filtros limpiados');
+  };
+
+  const canBulkAssign = hasRole(['SUPERVISOR', 'ADMINISTRADOR']);
+
+  const selectedCount = useMemo(() => {
+    const ids = Object.keys(selectedIds).filter((id) => selectedIds[id]);
+    return ids.length;
+  }, [selectedIds]);
+
+  const toggleSelectOne = (id: string, checked: boolean) => {
+    if (!canBulkAssign) return;
+    setSelectedIds((prev) => ({ ...prev, [id]: checked }));
+  };
+
+  const clearSelection = () => setSelectedIds({});
+
+  const bulkAssign = () => {
+    if (!canBulkAssign) return;
+    if (!user) return;
+    const ids = Object.keys(selectedIds).filter((id) => selectedIds[id]);
+    if (ids.length === 0) {
+      toast.error('Selecciona al menos un caso para asignar');
+      return;
+    }
+    if (!bulkAssignee.trim()) {
+      toast.error('Ingresa el responsable a asignar');
+      return;
+    }
+
+    ids.forEach((id) => {
+      const req = requirements.find((r) => r.id === id);
+      if (!req) return;
+      updateRequirement(id, {
+        assignedTeam: 'Soporte CC',
+        assignedTo: bulkAssignee.trim(),
+        history: [
+          ...req.history,
+          {
+            id: Date.now().toString(),
+            date: new Date(),
+            action: 'Asignación masiva',
+            user: user.name,
+            comment: `Asignado a: ${bulkAssignee.trim()}`,
+          },
+        ],
+      });
+    });
+
+    toast.success(`Asignación aplicada: ${ids.length} caso(s)`);
+    clearSelection();
   };
 
   // Primero filtrar por fecha para obtener el conjunto base
@@ -163,6 +225,8 @@ const RequirementsList = () => {
         req.ticketNumber.toLowerCase().includes(search.toLowerCase()) ||
         (req.nombreAsesor?.toLowerCase() || '').includes(search.toLowerCase()) ||
         req.pnrTktLocalizador.toLowerCase().includes(search.toLowerCase()) ||
+        (req.correoElectronico?.toLowerCase() || '').includes(search.toLowerCase()) ||
+        (req.pasajeroCorreo?.toLowerCase() || '').includes(search.toLowerCase()) ||
         (req.motivo?.toLowerCase() || '').includes(search.toLowerCase());
       
       const matchesCountry = countryFilter === 'all' || req.pais === countryFilter;
@@ -172,8 +236,15 @@ const RequirementsList = () => {
       const matchesPriority = priorityFilter === 'all' || req.priority === priorityFilter;
       const matchesOrigen = origenFilter === 'all' || req.baseOrigen === origenFilter;
       const matchesMotivo = motivoFilter === 'all' || req.motivo === motivoFilter;
+      const pendingPriority = getPendingInteractionsPriority(req);
+      const matchesInteractions =
+        interactionFilter === 'all' ||
+        (interactionFilter === 'pending' && pendingPriority !== null) ||
+        (interactionFilter === 'none' && pendingPriority === null) ||
+        (interactionFilter === 'urgent' && pendingPriority === 'URGENTE') ||
+        (interactionFilter === 'normal' && pendingPriority === 'NORMAL');
 
-      return matchesSearch && matchesCountry && matchesAssignedTo && matchesStatus && matchesPriority && matchesOrigen && matchesMotivo;
+      return matchesSearch && matchesCountry && matchesAssignedTo && matchesStatus && matchesPriority && matchesOrigen && matchesMotivo && matchesInteractions;
     });
 
     // Aplicar ordenamiento
@@ -219,10 +290,53 @@ const RequirementsList = () => {
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [dateFilteredRequirements, search, countryFilter, assignedToFilter, statusFilter, priorityFilter, origenFilter, motivoFilter, sortColumn, sortDirection]);
+  }, [dateFilteredRequirements, search, countryFilter, assignedToFilter, statusFilter, priorityFilter, origenFilter, motivoFilter, interactionFilter, sortColumn, sortDirection, getPendingInteractionsPriority]);
+
+  const allVisibleSelected = useMemo(() => {
+    if (!canBulkAssign) return false;
+    if (filteredRequirements.length === 0) return false;
+    return filteredRequirements.every((r) => selectedIds[r.id]);
+  }, [canBulkAssign, filteredRequirements, selectedIds]);
+
+  const toggleSelectAllVisible = (checked: boolean) => {
+    if (!canBulkAssign) return;
+    setSelectedIds((prev) => {
+      const next = { ...prev };
+      filteredRequirements.forEach((r) => {
+        next[r.id] = checked;
+      });
+      return next;
+    });
+  };
 
   const exportToCSV = () => {
-    const headers = ['Ticket', 'País', 'Base Origen', 'PNR', 'Estado', 'Fecha Envío', 'Prioridad', 'Asignado a', 'Motivo', 'Fecha Creación'];
+    const headers = [
+      'Ticket',
+      'País',
+      'Base Origen',
+      'PNR',
+      'Estado',
+      'Fecha Envío',
+      'Prioridad',
+      'Asignado a',
+      'Motivo',
+      'Sub Motivo',
+      'Monto Voucher (USD)',
+      'Solicitante (ATO)',
+      'Email Solicitante',
+      'Hora Ingreso',
+      'Comentarios',
+      'Pasajero',
+      'Documento',
+      'Correo Pasajero',
+      'Fecha Vuelo',
+      'N° Vuelo',
+      'Tramo',
+      'Operado por',
+      'Observaciones',
+      'Equipo',
+      'Fecha Creación',
+    ];
     const rows = filteredRequirements.map(req => [
       req.ticketNumber,
       req.pais,
@@ -233,6 +347,21 @@ const RequirementsList = () => {
       req.priority,
       req.assignedTo || '',
       req.motivo || '',
+      req.subMotivo || '',
+      typeof req.montoVoucherUsd === 'number' ? req.montoVoucherUsd : '',
+      req.nombreAsesor || '',
+      req.correoElectronico || '',
+      req.horaIngresoCorreo || '',
+      req.comentariosAdicionales || '',
+      req.pasajeroNombreApellido || '',
+      req.pasajeroDocumento || '',
+      req.pasajeroCorreo || '',
+      req.fechaVuelo ? new Date(req.fechaVuelo).toLocaleDateString('es-AR') : '',
+      req.numeroVuelo || '',
+      req.tramoVuelo || '',
+      req.vueloOperadoPor || '',
+      req.observaciones || '',
+      req.assignedTeam || '',
       new Date(req.createdAt).toLocaleString('es-AR'),
     ]);
 
@@ -403,7 +532,7 @@ const RequirementsList = () => {
               </div>
             </>
           )}
-          {hasRole(['ADMINISTRADOR', 'SUPERVISOR', 'AEROPUERTO_ATO']) && (
+          {hasRole(['ADMINISTRADOR', 'AEROPUERTO_ATO']) && (
           <Link to="/requirements/new">
             <Button size="lg" className="gap-2">
               <Plus className="h-5 w-5" />
@@ -413,6 +542,34 @@ const RequirementsList = () => {
           )}
         </div>
       </div>
+
+      {/* Asignación masiva (Supervisor/Admin) */}
+      {canBulkAssign && (
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="text-sm">
+                <span className="font-semibold">Asignación masiva</span>
+                <span className="text-muted-foreground"> · Seleccionados: {selectedCount}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input
+                  value={bulkAssignee}
+                  onChange={(e) => setBulkAssignee(e.target.value)}
+                  placeholder="Asignar a (ej: Soporte CC)"
+                  className="h-9 w-[220px]"
+                />
+                <Button onClick={bulkAssign} disabled={selectedCount === 0} className="h-9">
+                  Asignar seleccionados
+                </Button>
+                <Button onClick={clearSelection} variant="outline" className="h-9">
+                  Limpiar selección
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filtros Híbridos - Compactos */}
       <Card>
@@ -445,7 +602,7 @@ const RequirementsList = () => {
               <Label htmlFor="search" className="text-xs font-medium mb-1.5 block">Buscar</Label>
               <Input
                 id="search"
-                placeholder="Ticket, asunto, PNR..."
+                placeholder="Ticket, PNR, correo..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-9"
@@ -463,7 +620,6 @@ const RequirementsList = () => {
                   <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="ingresado">Ingresado</SelectItem>
                 <SelectItem value="en-gestion">En Gestión</SelectItem>
-                <SelectItem value="revision-supervisor">Revisión Supervisor</SelectItem>
                 <SelectItem value="enviado">Enviado</SelectItem>
               </SelectContent>
             </Select>
@@ -553,7 +709,7 @@ const RequirementsList = () => {
           {/* Filtros Avanzados - Colapsables */}
           {showAdvancedFilters && (
             <div className="pt-3 border-t">
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
                 {/* País */}
                 <div>
                   <Label htmlFor="countryFilter" className="text-xs font-medium mb-1.5 block">País</Label>
@@ -590,6 +746,23 @@ const RequirementsList = () => {
                           {base}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Interacciones */}
+                <div>
+                  <Label htmlFor="interactionFilter" className="text-xs font-medium mb-1.5 block">Interacciones</Label>
+                  <Select value={interactionFilter} onValueChange={(value) => setInteractionFilter(value as typeof interactionFilter)}>
+                    <SelectTrigger id="interactionFilter" className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="pending">Con pendientes</SelectItem>
+                      <SelectItem value="none">Sin pendientes</SelectItem>
+                      <SelectItem value="urgent">Pendiente Urgente</SelectItem>
+                      <SelectItem value="normal">Pendiente Normal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -652,12 +825,29 @@ const RequirementsList = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {canBulkAssign && (
+                      <TableHead className="py-2 w-[44px]">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={allVisibleSelected}
+                            onCheckedChange={(v) => toggleSelectAllVisible(v === true)}
+                            aria-label="Seleccionar todos"
+                          />
+                        </div>
+                      </TableHead>
+                    )}
+                    <TableHead className="py-2 w-[90px] text-xs font-semibold">
+                      Interacción
+                    </TableHead>
                     <TableHead className="py-2">
                       <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent" onClick={() => handleSort('ticketNumber')}>
                         Ticket
                         {sortColumn === 'ticketNumber' && (sortDirection === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />)}
                         {sortColumn !== 'ticketNumber' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
                       </Button>
+                    </TableHead>
+                    <TableHead className="py-2 text-xs font-semibold">
+                      Código de Reserva (PNR)
                     </TableHead>
                     <TableHead className="py-2">
                       <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold hover:bg-accent" onClick={() => handleSort('pais')}>
@@ -704,15 +894,66 @@ const RequirementsList = () => {
                         {sortColumn !== 'assignedTo' && <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />}
                       </Button>
                     </TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Solicitante (ATO)</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Email Solicitante</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Hora Ingreso</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Sub Motivo</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Comentarios</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Pasajero</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Documento</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Correo Pasajero</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Fecha Vuelo</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">N° Vuelo</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Tramo</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Operado por</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Monto Voucher (USD)</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Observaciones</TableHead>
+                    <TableHead className="py-2 text-xs font-semibold whitespace-nowrap">Equipo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRequirements.map((req) => (
                     <TableRow key={req.id} className="cursor-pointer hover:bg-accent" onClick={() => handleRowClick(req.id)}>
+                      {canBulkAssign && (
+                        <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center">
+                            <Checkbox
+                              checked={!!selectedIds[req.id]}
+                              onCheckedChange={(v) => toggleSelectOne(req.id, v === true)}
+                              aria-label={`Seleccionar ${req.ticketNumber}`}
+                            />
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell className="py-2">
-                        <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded font-semibold">
-                          {req.ticketNumber}
-                        </span>
+                        {(() => {
+                          const pr = getPendingInteractionsPriority(req);
+                          if (!pr) return <span className="text-xs text-muted-foreground">-</span>;
+                          const urgent = pr === 'URGENTE';
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border font-semibold ${
+                                urgent
+                                  ? 'border-destructive/30 text-destructive bg-destructive/10'
+                                  : 'border-emerald-500/30 text-emerald-700 bg-emerald-500/10 dark:text-emerald-300'
+                              }`}
+                              title="Interacción pendiente"
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                              {pr}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded font-semibold">
+                            {req.ticketNumber}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono">{req.pnrTktLocalizador}</span>
                       </TableCell>
                       <TableCell className="py-2">
                         <span className="text-xs font-semibold">{req.pais}</span>
@@ -745,6 +986,69 @@ const RequirementsList = () => {
                         ) : (
                           <span className="text-xs text-muted-foreground italic">Sin asignar</span>
                         )}
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap">{req.nombreAsesor || '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.correoElectronico || ''}>
+                          {req.correoElectronico || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap">{req.horaIngresoCorreo || '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.subMotivo || ''}>
+                          {req.subMotivo || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs max-w-[220px] inline-block truncate align-middle" title={req.comentariosAdicionales || ''}>
+                          {req.comentariosAdicionales || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.pasajeroNombreApellido || ''}>
+                          {req.pasajeroNombreApellido || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.pasajeroDocumento || ''}>
+                          {req.pasajeroDocumento || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap" title={req.pasajeroCorreo || ''}>
+                          {req.pasajeroCorreo || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap">
+                          {req.fechaVuelo ? new Date(req.fechaVuelo).toLocaleDateString('es-AR') : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap">{req.numeroVuelo || '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap" title={req.tramoVuelo || ''}>
+                          {req.tramoVuelo || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap">{req.vueloOperadoPor || '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs font-mono whitespace-nowrap">{Number.isFinite(req.montoVoucherUsd) ? req.montoVoucherUsd : '-'}</span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs max-w-[220px] inline-block truncate align-middle" title={req.observaciones || ''}>
+                          {req.observaciones || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <span className="text-xs whitespace-nowrap">{req.assignedTeam || '-'}</span>
                       </TableCell>
                     </TableRow>
                   ))}

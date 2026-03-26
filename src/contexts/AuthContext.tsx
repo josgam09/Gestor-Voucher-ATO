@@ -3,7 +3,7 @@ import { User, UserRole } from '../types/user';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => User | null;
   logout: () => void;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   isLoading: boolean;
@@ -28,7 +28,7 @@ const DEMO_USERS: DemoUser[] = [
   },
   {
     id: '2',
-    name: 'Supervisor Principal',
+    name: 'Supervisor de Proceso',
     email: 'supervisor@jetsmart.com',
     password: 'password123',
     role: 'SUPERVISOR',
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(false);
   }, []);
 
-  const login = (email: string, password: string): boolean => {
+  const login = (email: string, password: string): User | null => {
     const foundUser = DEMO_USERS.find(
       u => u.email === email && u.password === password && u.isActive
     );
@@ -83,9 +83,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { password: _, ...userWithoutPassword } = foundUser;
       setUser(userWithoutPassword);
       localStorage.setItem('gds_user', JSON.stringify(userWithoutPassword));
-      return true;
+      return userWithoutPassword;
     }
-    return false;
+    return null;
   };
 
   const logout = () => {
